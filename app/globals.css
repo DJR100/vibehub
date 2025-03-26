@@ -1,0 +1,122 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 0 0% 0%;
+    --foreground: 0 0% 100%;
+
+    --card: 0 0% 4%;
+    --card-foreground: 0 0% 100%;
+
+    --popover: 0 0% 4%;
+    --popover-foreground: 0 0% 100%;
+
+    --primary: 16 100% 50%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 0 100% 50%;
+    --secondary-foreground: 0 0% 100%;
+
+    --muted: 0 0% 15%;
+    --muted-foreground: 0 0% 70%;
+
+    --accent: 16 100% 50%;
+    --accent-foreground: 0 0% 100%;
+
+    --destructive: 0 100% 50%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 0 0% 20%;
+    --input: 0 0% 20%;
+    --ring: 16 100% 50%;
+
+    --radius: 0.5rem;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+
+@layer components {
+  .pixel-text {
+    font-family: "Press Start 2P", cursive;
+    letter-spacing: 0.05em;
+    line-height: 1.5;
+  }
+
+  .pixel-border {
+    box-shadow: 0 4px 0 0 rgba(0, 0, 0, 0.2), inset -4px -4px 0 0 rgba(0, 0, 0, 0.3), inset 4px 4px 0 0
+      rgba(255, 255, 255, 0.1);
+  }
+
+  .game-card {
+    position: relative;
+    overflow: hidden;
+    border-radius: 0.5rem;
+    background-color: hsl(var(--card));
+    transition-property: all;
+    transition-duration: 300ms;
+    height: 280px;
+  }
+
+  .game-card:hover {
+    transform: scale(1.02);
+    box-shadow: 0 0 15px rgba(255, 100, 0, 0.5);
+  }
+
+  .game-card-content {
+    @apply absolute inset-0 flex flex-col justify-between p-4;
+    background: linear-gradient(to top, rgba(0, 0, 0, 0.9) 0%, rgba(0, 0, 0, 0.5) 50%, rgba(0, 0, 0, 0) 100%);
+  }
+
+  .pixel-button {
+    font-family: "Press Start 2P", cursive;
+    letter-spacing: 0.05em;
+    line-height: 1.5;
+    background-color: hsl(var(--primary));
+    padding-left: 1rem;
+    padding-right: 1rem;
+    padding-top: 0.5rem;
+    padding-bottom: 0.5rem;
+    color: white;
+    transition-property: all;
+    transition-duration: 200ms;
+    image-rendering: pixelated;
+    box-shadow: 0 4px 0 0 rgba(0, 0, 0, 0.3), inset -4px -4px 0 0 rgba(0, 0, 0, 0.3), inset 4px 4px 0 0
+      rgba(255, 255, 255, 0.1);
+  }
+
+  .pixel-button:hover {
+    transform: translateY(2px);
+    background-color: hsl(var(--secondary));
+    box-shadow: 0 2px 0 0 rgba(0, 0, 0, 0.3), inset -4px -4px 0 0 rgba(0, 0, 0, 0.3), inset 4px 4px 0 0
+      rgba(255, 255, 255, 0.1);
+  }
+
+  .pixel-button:active {
+    transform: translateY(4px);
+    box-shadow: 0 0 0 0 rgba(0, 0, 0, 0.3), inset -4px -4px 0 0 rgba(0, 0, 0, 0.3), inset 4px 4px 0 0
+      rgba(255, 255, 255, 0.1);
+  }
+
+  .pixel-input {
+    @apply w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2;
+  }
+
+  .tag {
+    @apply inline-flex items-center rounded-md bg-muted px-2 py-1 text-xs font-medium text-muted-foreground;
+  }
+
+  .stats-item {
+    @apply flex items-center gap-1 text-xs text-white;
+  }
+}
+
