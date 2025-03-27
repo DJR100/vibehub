@@ -18,6 +18,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import Image from "next/image"
+import { Badge } from "@/components/ui/badge"
 
 export default function UploadPage() {
   const { user, supabase } = useSupabase()
@@ -156,33 +157,48 @@ export default function UploadPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log("Form submitted");
+    
+    // Validation checks
+    const requiredFields = {
+      title: title.trim(),
+      description: description.trim(),
+      longDescription: longDescription.trim(),
+      howToPlay: howToPlay.trim(),
+      iframeUrl: iframeUrl.trim(),
+      imageFile: imageFile,
+      genres: genres,
+      aiTools: aiTools
+    };
 
-    if (genres.length === 0) {
+    const missingFields = Object.entries(requiredFields)
+      .filter(([_, value]) => {
+        if (Array.isArray(value)) {
+          return value.length === 0;
+        }
+        return !value;
+      })
+      .map(([key]) => key);
+
+    if (missingFields.length > 0) {
+      // Use a friendly field name mapping
+      const fieldNames = {
+        title: "Title",
+        description: "Short Description",
+        longDescription: "About This Game",
+        howToPlay: "How to Play",
+        iframeUrl: "Game URL",
+        imageFile: "Game Image",
+        genres: "Genres",
+        aiTools: "AI Tools"
+      };
+      
+      // Single toast notification for all missing fields
       toast({
-        title: "Genre required",
-        description: "Please select at least one genre for your game",
+        title: "Missing Required Fields",
+        description: "Please fill in all required fields marked with an asterisk (*) before uploading.",
         variant: "destructive",
       });
-      return;
-    }
-
-    if (aiTools.length === 0) {
-      toast({
-        title: "AI Tool required",
-        description: "Please select at least one AI tool used to create your game",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    // Check for iframe URL
-    if (!iframeUrl) {
-      toast({
-        title: "Game URL required",
-        description: "Please provide a URL where your game is hosted",
-        variant: "destructive",
-      });
+      
       return;
     }
 
@@ -308,15 +324,22 @@ export default function UploadPage() {
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="mx-auto max-w-3xl">
-        <h1 className="pixel-text mb-8 text-3xl font-bold">
+        <h1 className="pixel-text mb-4 text-3xl font-bold">
           Upload <span className="text-primary">Game</span>
         </h1>
+
+        {/* Required fields notice */}
+        <p className="mb-4 text-sm text-gray-400">
+          Fields marked with an asterisk (*) are required
+        </p>
 
         <div className="rounded-lg border border-gray-800 bg-card p-6">
           <form onSubmit={handleSubmit} className="space-y-6">
             {/* Game Title */}
             <div className="space-y-2">
-              <Label htmlFor="title">Title</Label>
+              <Label htmlFor="title">
+                Title <span className="text-primary">*</span>
+              </Label>
               <Input
                 id="title"
                 value={title}
@@ -329,7 +352,9 @@ export default function UploadPage() {
 
             {/* Short Description */}
             <div className="space-y-2">
-              <Label htmlFor="description">Short Description</Label>
+              <Label htmlFor="description">
+                Short Description <span className="text-primary">*</span>
+              </Label>
               <Textarea
                 id="description"
                 value={description}
@@ -342,7 +367,9 @@ export default function UploadPage() {
 
             {/* Long Description */}
             <div className="space-y-2">
-              <Label htmlFor="longDescription">About This Game</Label>
+              <Label htmlFor="longDescription">
+                About This Game <span className="text-primary">*</span>
+              </Label>
               <p className="text-sm text-gray-400 mb-2">
                 Tell players about your game's story, features, and what makes it special.
               </p>
@@ -352,12 +379,15 @@ export default function UploadPage() {
                 onChange={(e) => setLongDescription(e.target.value)}
                 placeholder="Provide detailed information about your game, its story, main features, and what makes it unique."
                 className="min-h-[150px]"
+                required
               />
             </div>
 
             {/* How to Play */}
             <div className="space-y-2">
-              <Label htmlFor="howToPlay">How to Play</Label>
+              <Label htmlFor="howToPlay">
+                How to Play <span className="text-primary">*</span>
+              </Label>
               <p className="text-sm text-gray-400 mb-2">
                 Explain the controls and basic instructions for playing your game.
               </p>
@@ -367,12 +397,15 @@ export default function UploadPage() {
                 onChange={(e) => setHowToPlay(e.target.value)}
                 placeholder="Explain game controls, objectives, and any tips for players (e.g., 'Use WASD to move, Space to jump, Click to interact')"
                 className="min-h-[150px]"
+                required
               />
             </div>
 
             {/* Game URL */}
             <div className="space-y-2">
-              <Label htmlFor="iframeUrl" className="text-lg font-medium text-primary">Game URL (Required)</Label>
+              <Label htmlFor="iframeUrl">
+                Game URL <span className="text-primary">*</span>
+              </Label>
               <p className="text-sm text-gray-400 mb-2">
                 Enter the URL where your game is hosted. This is where players will play your game.
               </p>
@@ -388,7 +421,7 @@ export default function UploadPage() {
 
             {/* GitHub URL */}
             <div className="space-y-2">
-              <Label htmlFor="githubUrl">GitHub URL (Optional)</Label>
+              <Label htmlFor="githubUrl">GitHub URL</Label>
               <Input
                 id="githubUrl"
                 value={githubUrl}
@@ -401,9 +434,11 @@ export default function UploadPage() {
 
             {/* Game Image Upload */}
             <div className="mb-4">
-              <Label htmlFor="image" className="block">Game Image</Label>
-              <div className="mt-1 flex items-center gap-4">
-                <div className="relative h-32 w-32 overflow-hidden rounded-md border border-gray-600">
+              <Label htmlFor="image" className="block">
+                Game Image <span className="text-primary">*</span>
+              </Label>
+              <div className="mt-1 flex items-start gap-4">
+                <div className="relative h-32 w-32 flex-shrink-0 overflow-hidden rounded-md border border-gray-600">
                   {imagePreview ? (
                     <Image
                       src={imagePreview}
@@ -417,20 +452,25 @@ export default function UploadPage() {
                     </div>
                   )}
                 </div>
-                <Input
-                  id="image"
-                  type="file"
-                  accept="image/*"
-                  onChange={handleImageChange}
-                  className="mt-1"
-                />
+                <div className="flex flex-col space-y-2 flex-grow w-full">
+                  <Input
+                    id="image"
+                    type="file"
+                    accept="image/*"
+                    onChange={handleImageChange}
+                    className="w-full"
+                    required
+                  />
+                  <p className="text-xs text-red-400">Upload a thumbnail image for your game (16:9 ratio recommended)</p>
+                </div>
               </div>
-              <p className="mt-1 text-xs text-gray-400">Upload a thumbnail image for your game (16:9 ratio recommended)</p>
             </div>
 
             {/* Genres - Dropdown Selection */}
             <div className="space-y-2">
-              <Label>Genres (Select all that apply)</Label>
+              <Label>
+                Genres <span className="text-primary">*</span>
+              </Label>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="outline" className="w-full justify-between">
@@ -450,23 +490,17 @@ export default function UploadPage() {
                   ))}
                 </DropdownMenuContent>
               </DropdownMenu>
+              {/* Selected genres display */}
               {genres.length > 0 && (
-                <div className="flex flex-wrap gap-2 pt-2">
+                <div className="flex flex-wrap gap-2 mt-2">
                   {genres.map((genre) => (
-                    <div
-                      key={genre}
-                      className="flex items-center rounded-full bg-primary/20 px-3 py-1 text-xs text-white"
-                    >
+                    <Badge key={genre} variant="outline" className="flex items-center gap-1 px-2 py-1">
                       {genre}
-                      <button
-                        type="button"
+                      <X
+                        className="h-3 w-3 cursor-pointer hover:text-primary"
                         onClick={() => handleRemoveGenre(genre)}
-                        className="ml-2 text-gray-300 hover:text-white"
-                      >
-                        <X className="h-3 w-3" />
-                        <span className="sr-only">Remove {genre}</span>
-                      </button>
-                    </div>
+                      />
+                    </Badge>
                   ))}
                 </div>
               )}
@@ -474,7 +508,9 @@ export default function UploadPage() {
 
             {/* AI Tools - Dropdown Selection */}
             <div className="space-y-2">
-              <Label>AI Tools Used (Select all that apply)</Label>
+              <Label>
+                AI Tools Used <span className="text-primary">*</span>
+              </Label>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="outline" className="w-full justify-between">
@@ -494,23 +530,17 @@ export default function UploadPage() {
                   ))}
                 </DropdownMenuContent>
               </DropdownMenu>
+              {/* Selected AI tools display */}
               {aiTools.length > 0 && (
-                <div className="flex flex-wrap gap-2 pt-2">
+                <div className="flex flex-wrap gap-2 mt-2">
                   {aiTools.map((tool) => (
-                    <div
-                      key={tool}
-                      className="flex items-center rounded-full bg-primary/20 px-3 py-1 text-xs text-white"
-                    >
+                    <Badge key={tool} variant="outline" className="flex items-center gap-1 px-2 py-1">
                       {tool}
-                      <button
-                        type="button"
+                      <X
+                        className="h-3 w-3 cursor-pointer hover:text-primary"
                         onClick={() => handleRemoveAiTool(tool)}
-                        className="ml-2 text-gray-300 hover:text-white"
-                      >
-                        <X className="h-3 w-3" />
-                        <span className="sr-only">Remove {tool}</span>
-                      </button>
-                    </div>
+                      />
+                    </Badge>
                   ))}
                 </div>
               )}

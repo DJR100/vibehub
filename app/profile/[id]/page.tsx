@@ -1,10 +1,10 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { useParams, useRouter } from "next/navigation"
 import Image from "next/image"
 import Link from "next/link"
-import { ThumbsUp, Eye, User, Pencil, Bookmark } from "lucide-react"
+import { ThumbsUp, Eye, User, Pencil, Bookmark, Camera } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Input } from "@/components/ui/input"
@@ -12,6 +12,8 @@ import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
 import { useSupabase } from "@/lib/supabase-provider"
 import { useToast } from "@/components/ui/use-toast"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
+import type { ProfileData } from "@/types"
 
 // Mock data for user games
 const creatorGames = [
@@ -85,6 +87,204 @@ const mockUsers = [
   },
 ]
 
+// Use the EditProfileDialogProps interface
+interface EditProfileDialogProps {
+  isOpen: boolean;
+  onClose: () => void;
+  onSave: (data: ProfileData) => void;
+  initialData: ProfileData;
+}
+
+// Add the type annotation to the function
+function EditProfileDialog({ isOpen, onClose, onSave, initialData }: EditProfileDialogProps) {
+  const { supabase } = useSupabase()
+  const [username, setUsername] = useState(initialData.username || "")
+  const [bio, setBio] = useState(initialData.bio || "")
+  const [profileImage, setProfileImage] = useState(initialData.avatar || null)
+  const [imageFile, setImageFile] = useState<File | null>(null)
+  const [imagePreview, setImagePreview] = useState<string | null>(initialData.avatar || null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const { toast } = useToast()
+
+  const handleImageClick = () => {
+    fileInputRef.current?.click()
+  }
+
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    // Validate file type
+    if (!file.type.startsWith('image/')) {
+      toast({
+        title: "Invalid file type",
+        description: "Please upload an image file (JPEG, PNG, etc.)",
+        variant: "destructive",
+      })
+      return
+    }
+
+    // Validate file size (limit to 2MB)
+    if (file.size > 2 * 1024 * 1024) {
+      toast({
+        title: "File too large",
+        description: "Image file should be less than 2MB",
+        variant: "destructive",
+      })
+      return
+    }
+
+    setImageFile(file)
+    
+    // Create a preview
+    const reader = new FileReader()
+    reader.onloadend = () => {
+      setImagePreview(reader.result as string)
+    }
+    reader.readAsDataURL(file)
+  }
+
+  const handleSave = async () => {
+    try {
+      let avatarUrl = initialData.avatar || "";
+      
+      // If there's a new image file, upload it
+      if (imageFile) {
+        const fileExt = imageFile.name.split('.').pop();
+        const fileName = `${initialData.id}/${Date.now()}.${fileExt}`;
+        
+        console.log("Starting avatar upload...");
+        console.log("Using bucket:", 'avatars');
+        console.log("File:", imageFile?.name);
+        console.log("Path:", fileName);
+        
+        // Upload to avatars bucket
+        const { error: uploadError, data } = await supabase.storage
+          .from('avatars')
+          .upload(fileName, imageFile, {
+            cacheControl: '3600',
+            upsert: true
+          });
+        
+        if (uploadError) {
+          console.error("Avatar upload error:", uploadError);
+          toast({
+            title: "Upload failed",
+            description: "Failed to upload profile picture. " + uploadError.message,
+            variant: "destructive",
+          });
+          return;
+        }
+        
+        // Get the public URL
+        const { data: urlData } = supabase.storage
+          .from('avatars')
+          .getPublicUrl(fileName);
+        
+        avatarUrl = urlData.publicUrl;
+      }
+      
+      // Continue with the rest of your save logic...
+      onSave({
+        ...initialData,
+        username,
+        bio,
+        avatar: avatarUrl,
+      });
+      
+      onClose();
+    } catch (error) {
+      console.error("Avatar upload error:", error);
+      toast({
+        title: "Save failed",
+        description: "An error occurred while saving your profile.",
+        variant: "destructive",
+      });
+    }
+  };
+
+  return (
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent className="bg-card border border-gray-800 sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle className="pixel-text text-xl">Edit Profile</DialogTitle>
+        </DialogHeader>
+        
+        {/* Profile Picture Upload */}
+        <div className="flex flex-col items-center space-y-4">
+          <div 
+            className="relative h-24 w-24 rounded-full border-2 border-primary cursor-pointer overflow-hidden"
+            onClick={handleImageClick}
+          >
+            {imagePreview ? (
+              <Image
+                src={imagePreview}
+                alt="Profile"
+                fill
+                className="object-cover"
+              />
+            ) : (
+              <div className="flex h-full w-full items-center justify-center bg-gray-800 text-gray-400">
+                <Camera className="h-8 w-8" />
+              </div>
+            )}
+            
+            <div className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-50 opacity-0 hover:opacity-100 transition-opacity">
+              <Camera className="h-8 w-8 text-white" />
+            </div>
+          </div>
+          
+          <input
+            type="file"
+            ref={fileInputRef}
+            accept="image/*"
+            className="hidden"
+            onChange={handleImageChange}
+          />
+          
+          <p className="text-xs text-gray-400">
+            Click to upload a profile picture
+          </p>
+        </div>
+        
+        {/* Username Field */}
+        <div className="space-y-2">
+          <Label htmlFor="username">Username</Label>
+          <Input
+            id="username"
+            value={username}
+            onChange={(e) => setUsername(e.target.value)}
+            className="pixel-input"
+          />
+        </div>
+        
+        {/* Bio Field */}
+        <div className="space-y-2">
+          <Label htmlFor="bio">Bio</Label>
+          <Textarea
+            id="bio"
+            value={bio}
+            onChange={(e) => setBio(e.target.value)}
+            rows={4}
+            className="pixel-input"
+          />
+        </div>
+        
+        <DialogFooter>
+          <div className="flex justify-between w-full">
+            <Button variant="outline" onClick={onClose}>
+              Cancel
+            </Button>
+            <Button onClick={handleSave} className="pixel-button">
+              Save
+            </Button>
+          </div>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  )
+}
+
 export default function ProfilePage() {
   const params = useParams()
   const { id } = params
@@ -99,6 +299,8 @@ export default function ProfilePage() {
   const [isOwnProfile, setIsOwnProfile] = useState(false)
   const [userGames, setUserGames] = useState<any[]>([])
   const [favoriteGames, setFavoriteGames] = useState<any[]>([])
+  const [isLoading, setIsLoading] = useState(false)
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
 
   useEffect(() => {
     if (!user && !id) {
@@ -231,38 +433,64 @@ export default function ProfilePage() {
     }
   }, [user, router, id, supabase])
 
-  const handleSaveProfile = async () => {
-    if (!isOwnProfile) return
-
-    setLoading(true)
+  const handleSaveProfile = async (profileData: ProfileData) => {
+    if (!user) return;
+    
+    setIsLoading(true);
+    
     try {
-      const { error } = await updateProfile({
-        username,
-        bio,
-      })
-
-      if (error) {
-        toast({
-          title: "Update failed",
-          description: error.message,
-          variant: "destructive",
+      // Update user metadata including the avatar
+      const { error: metadataError } = await supabase.auth.updateUser({
+        data: {
+          username: profileData.username,
+          avatar_url: profileData.avatar,
+        }
+      });
+      
+      if (metadataError) throw metadataError;
+      
+      // Update profile in profiles table
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .update({
+          username: profileData.username,
+          bio: profileData.bio,
+          avatar_url: profileData.avatar
         })
-      } else {
-        setIsEditing(false)
-        toast({
-          title: "Profile updated",
-          description: "Your profile has been updated successfully",
-        })
-      }
-    } catch (error: any) {
+        .eq('id', user.id);
+      
+      if (profileError) throw profileError;
+      
+      // Update the profile user state to reflect changes immediately
+      setProfileUser({
+        ...profileUser,
+        username: profileData.username,
+        bio: profileData.bio,
+        avatar_url: profileData.avatar,
+        avatar: profileData.avatar
+      });
+      
       toast({
-        title: "Update failed",
-        description: error.message,
+        title: "Profile updated",
+        description: "Your profile has been successfully updated.",
+      });
+      
+      // Refresh the UI
+      router.refresh();
+    } catch (error: any) {
+      console.error("Error updating profile:", error);
+      toast({
+        title: "Failed to update profile",
+        description: error.message || "An unexpected error occurred",
         variant: "destructive",
-      })
+      });
     } finally {
-      setLoading(false)
+      setIsLoading(false);
     }
+  };
+
+  const handleEditProfile = () => {
+    setIsEditDialogOpen(true)
   }
 
   if (!profileUser) {
@@ -292,7 +520,7 @@ export default function ProfilePage() {
             <div className="rounded-lg border border-gray-800 bg-card p-6 text-center">
               <div className="mx-auto mb-4 h-24 w-24 overflow-hidden rounded-full">
                 <Image
-                  src={profileUser.avatar || "/placeholder.svg?height=96&width=96"}
+                  src={profileUser.avatar_url || profileUser.avatar || "/placeholder.svg?height=96&width=96"}
                   alt={displayName}
                   width={96}
                   height={96}
@@ -300,49 +528,24 @@ export default function ProfilePage() {
                 />
               </div>
 
-              {isOwnProfile && isEditing ? (
-                <div className="space-y-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="username">Username</Label>
-                    <Input
-                      id="username"
-                      value={username}
-                      onChange={(e) => setUsername(e.target.value)}
-                      className="pixel-input"
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <Label htmlFor="bio">Bio</Label>
-                    <Textarea
-                      id="bio"
-                      value={bio}
-                      onChange={(e) => setBio(e.target.value)}
-                      className="pixel-input min-h-[100px]"
-                    />
-                  </div>
-
-                  <div className="flex space-x-2">
-                    <Button onClick={handleSaveProfile} className="pixel-button flex-1" disabled={loading}>
-                      {loading ? "Saving..." : "Save"}
-                    </Button>
-                    <Button variant="outline" onClick={() => setIsEditing(false)} className="flex-1" disabled={loading}>
-                      Cancel
-                    </Button>
-                  </div>
-                </div>
-              ) : (
+              {isOwnProfile && (
                 <>
-                  <h2 className="pixel-text mb-2 text-xl font-bold text-primary">{displayName}</h2>
-                  <p className="text-gray-300">
-                    {profileUser?.bio || "No bio yet"}
-                  </p>
-                  {isOwnProfile && (
-                    <Button onClick={() => setIsEditing(true)} className="pixel-button w-full">
-                      <Pencil className="mr-2 h-4 w-4" />
-                      Edit Profile
-                    </Button>
-                  )}
+                  <Button onClick={handleEditProfile} className="pixel-button w-full">
+                    <Pencil className="mr-2 h-4 w-4" />
+                    Edit Profile
+                  </Button>
+                  
+                  <EditProfileDialog 
+                    isOpen={isEditDialogOpen}
+                    onClose={() => setIsEditDialogOpen(false)}
+                    onSave={(data: ProfileData) => handleSaveProfile(data)}
+                    initialData={{
+                      id: user?.id || "",
+                      username: profileUser?.username || "",
+                      bio: profileUser?.bio || "",
+                      avatar: profileUser?.avatar_url || profileUser?.avatar || ""
+                    }}
+                  />
                 </>
               )}
             </div>

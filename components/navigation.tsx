@@ -72,7 +72,7 @@ export default function Navigation() {
                   <Button variant="ghost" className="relative h-8 w-8 rounded-full">
                     <Avatar className="h-8 w-8">
                       <AvatarImage
-                        src={user.avatar || "/placeholder.svg?height=32&width=32"}
+                        src={user.user_metadata?.avatar_url || user.avatar_url || "/placeholder.svg?height=32&width=32"}
                         alt={user.user_metadata?.username || "User"}
                       />
                       <AvatarFallback>{user.user_metadata?.username?.charAt(0) || "U"}</AvatarFallback>

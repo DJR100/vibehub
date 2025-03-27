@@ -6,6 +6,7 @@ import { createContext, useContext, useEffect, useState } from "react"
 import { createClient } from "@supabase/supabase-js"
 import { useToast } from "@/components/ui/use-toast"
 import { useRouter } from "next/navigation"
+import type { ProfileUpdateData } from "@/types"
 
 // Create a Supabase client
 const supabaseUrl = "https://ezwrieepubvnyijvcicp.supabase.co"
@@ -150,6 +151,17 @@ export const SupabaseProvider = ({ children }: { children: React.ReactNode }) =>
         description: `Welcome to VibeHub! Please check your email for confirmation.`,
       })
       
+      // Create a profile entry
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .insert({
+          id: data.user?.id,
+          username: username,
+          bio: "",
+          avatar_url: "",  // Initialize with empty avatar_url
+          created_at: new Date().toISOString()
+        })
+      
       return { user: data.user, error: null }
     } catch (error: any) {
       toast({
@@ -193,7 +205,7 @@ export const SupabaseProvider = ({ children }: { children: React.ReactNode }) =>
   }
 
   // Real update profile function
-  const updateProfile = async (updates: any) => {
+  const updateProfile = async (updates: ProfileUpdateData) => {
     try {
       setLoading(true)
       
@@ -214,15 +226,17 @@ export const SupabaseProvider = ({ children }: { children: React.ReactNode }) =>
         .update({
           username: updates.username,
           bio: updates.bio,
-          // Add any other fields you want to update
+          avatar_url: updates.avatar_url
         })
-        .eq('id', user.id)
+        .eq('id', user?.id)
       
       if (profileError) throw profileError
       
       // Refresh user data
       const { data: userData } = await supabase.auth.getUser()
-      if (userData) setUser(userData.user)
+      if (userData && userData.user) {
+        setUser(userData.user)
+      }
       
       toast({
         title: "Profile updated",
