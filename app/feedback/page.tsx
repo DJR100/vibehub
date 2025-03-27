@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
 import { useToast } from "@/components/ui/use-toast"
 import { useSupabase } from "@/lib/supabase-provider"
+import { Loader2 } from "lucide-react"
 
 // Feedback categories with icons
 const feedbackCategories = [
@@ -27,10 +28,11 @@ const feedbackCategories = [
 export default function FeedbackPage() {
   const router = useRouter()
   const { toast } = useToast()
-  const { user } = useSupabase()
+  const { user, supabase } = useSupabase()
   const [feedback, setFeedback] = useState("")
   const [selectedCategories, setSelectedCategories] = useState<string[]>([])
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const [showThankYouDialog, setShowThankYouDialog] = useState(false)
 
   const toggleCategory = (categoryId: string) => {
     setSelectedCategories((prev) =>
@@ -50,16 +52,42 @@ export default function FeedbackPage() {
 
     setIsSubmitting(true)
 
-    // Simulate API call
-    await new Promise((resolve) => setTimeout(resolve, 1000))
+    try {
+      // Submit to your existing feedback table
+      const { data, error } = await supabase
+        .from('feedback')
+        .insert({
+          user_id: user?.id || null, // Use user ID if logged in
+          content: feedback, // Your content field
+          categories: selectedCategories, // Your categories array field
+          // created_at will be handled by Supabase default value
+        })
+      
+      if (error) {
+        console.error("Error submitting feedback:", error)
+        throw error
+      }
+      
+      // Reset form fields
+      setFeedback("")
+      setSelectedCategories([])
+      
+      // Show thank you dialog instead of redirecting
+      setShowThankYouDialog(true)
+    } catch (error: any) {
+      toast({
+        title: "Submission failed",
+        description: error.message || "Failed to submit your feedback. Please try again.",
+        variant: "destructive",
+      })
+    } finally {
+      setIsSubmitting(false)
+    }
+  }
 
-    toast({
-      title: "Feedback submitted",
-      description: "Thank you for helping us improve VibeHub!",
-    })
-
-    setIsSubmitting(false)
-    router.push("/")
+  // Close the thank you dialog
+  const closeThankYouDialog = () => {
+    setShowThankYouDialog(false)
   }
 
   return (
@@ -107,23 +135,44 @@ export default function FeedbackPage() {
             </div>
           </div>
 
-          <div className="pt-4 border-t border-gray-800">
-            <p className="text-sm text-gray-400 mb-6">
-              Information you provide will be linked to your account in accordance with our{" "}
-              <Link href="/privacy" className="text-primary hover:underline">
-                Privacy Policy
-              </Link>
-              .
-            </p>
-
-            <div className="flex justify-end">
-              <Button onClick={handleSubmit} disabled={isSubmitting} className="pixel-button">
-                {isSubmitting ? "Submitting..." : "Submit Feedback"}
-              </Button>
-            </div>
+          <div className="flex justify-end space-x-4 pt-4">
+            <Button variant="outline" onClick={() => router.push('/')}>
+              Cancel
+            </Button>
+            <Button 
+              onClick={handleSubmit} 
+              disabled={isSubmitting}
+              className="pixel-border"
+            >
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Submitting...
+                </>
+              ) : (
+                "Submit Feedback"
+              )}
+            </Button>
           </div>
         </div>
       </div>
+
+      {/* Thank You Dialog */}
+      {showThankYouDialog && (
+        <div className="fixed inset-0 bg-black bg-opacity-70 flex items-center justify-center z-50">
+          <div className="bg-card border-2 border-primary p-6 rounded-lg max-w-md text-center pixel-border">
+            <h2 className="pixel-text text-2xl font-bold mb-4">Thank You!</h2>
+            <div className="text-5xl mb-4">🎮</div>
+            <p className="mb-6 text-gray-300">
+              Your feedback has been received and the VibeHub team is working on it! 
+              We appreciate your help in making our platform better.
+            </p>
+            <Button onClick={closeThankYouDialog} className="pixel-border">
+              Keep Exploring
+            </Button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

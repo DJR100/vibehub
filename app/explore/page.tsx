@@ -5,7 +5,7 @@ import type React from "react"
 import { useState } from "react"
 import Link from "next/link"
 import Image from "next/image"
-import { ThumbsUp, Eye, User, Filter, Search } from "lucide-react"
+import { ThumbsUp, Eye, User, Filter, Search, Bookmark, ChevronDown, ChevronUp } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -174,8 +174,46 @@ const genres = [
   "Arcade",
   "Fighting",
 ]
-const aiTools = ["GPT-4", "Claude"]
+const aiTools = [
+  "GPT-4o",
+  "GPT-4 Turbo",
+  "GPT-4",
+  "GPT-3.5 Turbo",
+  "GPT-3.5",
+  "GPT-4.5 Preview",
+  "o3-mini",
+  "Claude 3.5 Sonnet",
+  "Claude 3.5 Haiku",
+  "Claude 3.5 Opus",
+  "Claude 3 Haiku",
+  "Claude 3 Sonnet",
+  "Claude 3 Opus",
+  "DeepSeek-V3-0324",
+  "DeepSeek-Coder-V2",
+  "DeepSeek-V2",
+  "DeepSeek-RL",
+  "LLaMA 3.3",
+  "LLaMA 3.2",
+  "LLaMA 3.1",
+  "Gemini 1",
+  "Gemini 1.5",
+  "Gemini 1.5 Pro",
+  "Gemini 1.5 Flash",
+  "Gemini 1 Pro",
+  "Gemini 1 Ultra"
+]
 const sortOptions = ["Most Popular", "Newest", "Most Played"]
+
+type Game = {
+  id: number;
+  title: string;
+  image: string;
+  likes: number;
+  views: number;
+  creator: string;
+  tags: string[];
+  favorites_count?: number;
+}
 
 export default function ExplorePage() {
   const [games, setGames] = useState(allGames)
@@ -184,6 +222,8 @@ export default function ExplorePage() {
   const [multiplayerOnly, setMultiplayerOnly] = useState(false)
   const [sortBy, setSortBy] = useState("Most Popular")
   const [searchQuery, setSearchQuery] = useState("")
+  const [expandedGenres, setExpandedGenres] = useState(false)
+  const [expandedAITools, setExpandedAITools] = useState(false)
 
   const applyFilters = () => {
     let filteredGames = [...allGames]
@@ -241,6 +281,14 @@ export default function ExplorePage() {
     applyFilters()
   }
 
+  const toggleGenreExpand = () => {
+    setExpandedGenres(!expandedGenres)
+  }
+
+  const toggleAIToolsExpand = () => {
+    setExpandedAITools(!expandedAITools)
+  }
+
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="mb-8 flex flex-col items-center justify-between space-y-4 md:flex-row md:space-y-0">
@@ -250,7 +298,7 @@ export default function ExplorePage() {
 
         <div className="flex w-full flex-col space-y-4 md:w-auto md:flex-row md:space-x-4 md:space-y-0">
           {/* Search Bar */}
-          <form onSubmit={handleSearch} className="flex w-full md:w-auto">
+          <form onSubmit={(e) => { e.preventDefault(); applyFilters(); }} className="flex w-full md:w-auto">
             <div className="relative flex-grow">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-500" />
               <Input
@@ -270,112 +318,26 @@ export default function ExplorePage() {
           <Select
             value={sortBy}
             onValueChange={(value) => {
-              setSortBy(value)
-              setTimeout(applyFilters, 0)
+              setSortBy(value);
+              setTimeout(applyFilters, 0);
             }}
           >
-            <SelectTrigger className="w-full md:w-[180px]">
+            <SelectTrigger className="w-[180px]">
               <SelectValue placeholder="Sort by" />
             </SelectTrigger>
             <SelectContent>
-              {sortOptions.map((option) => (
-                <SelectItem key={option} value={option}>
-                  {option}
-                </SelectItem>
-              ))}
+              <SelectItem value="Most Popular">Most Popular</SelectItem>
+              <SelectItem value="Most Played">Most Played</SelectItem>
+              <SelectItem value="Newest">Newest</SelectItem>
             </SelectContent>
           </Select>
-
-          {/* Filter Button (Mobile) */}
-          <Sheet>
-            <SheetTrigger asChild>
-              <Button variant="outline" className="w-full md:w-auto">
-                <Filter className="mr-2 h-4 w-4" />
-                Filters
-              </Button>
-            </SheetTrigger>
-            <SheetContent>
-              <SheetHeader>
-                <SheetTitle className="pixel-text">Filters</SheetTitle>
-                <SheetDescription>Narrow down games by genre, features, and more.</SheetDescription>
-              </SheetHeader>
-
-              <div className="mt-6 space-y-6">
-                {/* Genre Filter */}
-                <div>
-                  <h3 className="mb-3 font-medium">Genre</h3>
-                  <div className="space-y-2">
-                    {genres.map((genre) => (
-                      <div key={genre} className="flex items-center space-x-2">
-                        <Checkbox
-                          id={`mobile-genre-${genre}`}
-                          checked={selectedGenres.includes(genre)}
-                          onCheckedChange={() => toggleGenre(genre)}
-                        />
-                        <Label htmlFor={`mobile-genre-${genre}`} className="text-sm font-normal">
-                          {genre}
-                        </Label>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                {/* AI Tool Filter */}
-                <div>
-                  <h3 className="mb-3 font-medium">AI Tool</h3>
-                  <div className="space-y-2">
-                    {aiTools.map((tool) => (
-                      <div key={tool} className="flex items-center space-x-2">
-                        <Checkbox
-                          id={`mobile-tool-${tool}`}
-                          checked={selectedAITools.includes(tool)}
-                          onCheckedChange={() => toggleAITool(tool)}
-                        />
-                        <Label htmlFor={`mobile-tool-${tool}`} className="text-sm font-normal">
-                          {tool}
-                        </Label>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Multiplayer Filter */}
-                <div>
-                  <div className="flex items-center space-x-2">
-                    <Checkbox
-                      id="mobile-multiplayer"
-                      checked={multiplayerOnly}
-                      onCheckedChange={(checked) => setMultiplayerOnly(!!checked)}
-                    />
-                    <Label htmlFor="mobile-multiplayer" className="text-sm font-normal">
-                      Multiplayer Only
-                    </Label>
-                  </div>
-                </div>
-
-                <div className="flex space-x-2 pt-4">
-                  <Button
-                    onClick={() => {
-                      applyFilters()
-                    }}
-                    className="flex-1"
-                  >
-                    Apply Filters
-                  </Button>
-                  <Button variant="outline" onClick={resetFilters} className="flex-1">
-                    Reset
-                  </Button>
-                </div>
-              </div>
-            </SheetContent>
-          </Sheet>
         </div>
       </div>
 
       <div className="grid grid-cols-12 gap-6">
-        {/* Desktop Filters Sidebar */}
-        <div className="hidden md:col-span-3 md:block">
-          <div className="rounded-lg border border-border bg-card p-4">
+        {/* Filters Panel */}
+        <div className="col-span-12 md:col-span-3">
+          <div className="rounded-lg border border-gray-800 bg-card p-6">
             <div className="mb-4 flex items-center justify-between">
               <h3 className="font-medium">Filters</h3>
               <Button variant="ghost" onClick={resetFilters} className="h-8 px-2 text-xs">
@@ -383,42 +345,92 @@ export default function ExplorePage() {
               </Button>
             </div>
 
-            {/* Genre Filter */}
+            {/* Genre Filter - Now Expandable */}
             <div className="mb-6">
-              <h4 className="mb-3 text-sm font-medium">Genre</h4>
-              <div className="space-y-2">
-                {genres.map((genre) => (
-                  <div key={genre} className="flex items-center space-x-2">
-                    <Checkbox
-                      id={`genre-${genre}`}
-                      checked={selectedGenres.includes(genre)}
-                      onCheckedChange={() => toggleGenre(genre)}
-                    />
-                    <Label htmlFor={`genre-${genre}`} className="text-sm font-normal">
-                      {genre}
-                    </Label>
-                  </div>
-                ))}
+              <div 
+                className="flex items-center justify-between cursor-pointer mb-3" 
+                onClick={toggleGenreExpand}
+              >
+                <h4 className="text-sm font-medium">Genre</h4>
+                {expandedGenres ? (
+                  <ChevronUp className="h-4 w-4 text-gray-400" />
+                ) : (
+                  <ChevronDown className="h-4 w-4 text-gray-400" />
+                )}
               </div>
+              
+              {expandedGenres ? (
+                <div className="space-y-2">
+                  {genres.map((genre) => (
+                    <div key={genre} className="flex items-center space-x-2">
+                      <Checkbox
+                        id={`genre-${genre}`}
+                        checked={selectedGenres.includes(genre)}
+                        onCheckedChange={() => toggleGenre(genre)}
+                      />
+                      <Label htmlFor={`genre-${genre}`} className="text-sm font-normal">
+                        {genre}
+                      </Label>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {selectedGenres.length > 0 ? (
+                    <div className="text-sm text-gray-400">
+                      {selectedGenres.length} selected
+                    </div>
+                  ) : (
+                    <div className="text-sm text-gray-400">
+                      Click to select genres
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
 
-            {/* AI Tool Filter */}
+            {/* AI Tool Filter - Now Expandable */}
             <div className="mb-6">
-              <h4 className="mb-3 text-sm font-medium">AI Tool</h4>
-              <div className="space-y-2">
-                {aiTools.map((tool) => (
-                  <div key={tool} className="flex items-center space-x-2">
-                    <Checkbox
-                      id={`tool-${tool}`}
-                      checked={selectedAITools.includes(tool)}
-                      onCheckedChange={() => toggleAITool(tool)}
-                    />
-                    <Label htmlFor={`tool-${tool}`} className="text-sm font-normal">
-                      {tool}
-                    </Label>
-                  </div>
-                ))}
+              <div 
+                className="flex items-center justify-between cursor-pointer mb-3" 
+                onClick={toggleAIToolsExpand}
+              >
+                <h4 className="text-sm font-medium">AI Tool</h4>
+                {expandedAITools ? (
+                  <ChevronUp className="h-4 w-4 text-gray-400" />
+                ) : (
+                  <ChevronDown className="h-4 w-4 text-gray-400" />
+                )}
               </div>
+              
+              {expandedAITools ? (
+                <div className="space-y-2">
+                  {aiTools.map((tool) => (
+                    <div key={tool} className="flex items-center space-x-2">
+                      <Checkbox
+                        id={`tool-${tool}`}
+                        checked={selectedAITools.includes(tool)}
+                        onCheckedChange={() => toggleAITool(tool)}
+                      />
+                      <Label htmlFor={`tool-${tool}`} className="text-sm font-normal">
+                        {tool}
+                      </Label>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {selectedAITools.length > 0 ? (
+                    <div className="text-sm text-gray-400">
+                      {selectedAITools.length} selected
+                    </div>
+                  ) : (
+                    <div className="text-sm text-gray-400">
+                      Click to select AI tools
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
 
             {/* Multiplayer Filter */}
@@ -435,7 +447,8 @@ export default function ExplorePage() {
               </div>
             </div>
 
-            <Button onClick={applyFilters} className="w-full">
+            {/* Apply Button with pixel styling */}
+            <Button onClick={applyFilters} className="w-full pixel-button">
               Apply Filters
             </Button>
           </div>
@@ -444,7 +457,7 @@ export default function ExplorePage() {
         {/* Games Grid */}
         <div className="col-span-12 md:col-span-9">
           <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-            {games.map((game) => (
+            {games.map((game: Game) => (
               <Link key={game.id} href={`/game/${game.id}`} className="game-card">
                 <Image
                   src={game.image || "/placeholder.svg"}
@@ -464,18 +477,22 @@ export default function ExplorePage() {
                   <div>
                     <h3 className="pixel-text mb-2 text-lg font-bold">{game.title}</h3>
                     <div className="flex items-center justify-between">
-                      <div className="flex items-center space-x-1 text-xs text-gray-400">
-                        <User className="h-3 w-3" />
+                      <div className="flex items-center space-x-1 text-xs text-white">
+                        <User className="h-3 w-3 text-primary" />
                         <span>{game.creator}</span>
                       </div>
                       <div className="flex space-x-3">
                         <div className="stats-item">
-                          <ThumbsUp className="h-3 w-3" />
-                          <span>{game.likes.toLocaleString()}</span>
+                          <ThumbsUp className="h-3 w-3 text-primary" />
+                          <span className="text-white">{game.likes.toLocaleString()}</span>
                         </div>
                         <div className="stats-item">
-                          <Eye className="h-3 w-3" />
-                          <span>{game.views.toLocaleString()}</span>
+                          <Eye className="h-3 w-3 text-primary" />
+                          <span className="text-white">{game.views.toLocaleString()}</span>
+                        </div>
+                        <div className="stats-item">
+                          <Bookmark className="h-3 w-3 text-primary" />
+                          <span className="text-white">{game.favorites_count?.toLocaleString() || 0}</span>
                         </div>
                       </div>
                     </div>

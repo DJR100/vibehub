@@ -4,7 +4,7 @@ import { useState, useEffect } from "react"
 import { useParams, useRouter } from "next/navigation"
 import Image from "next/image"
 import Link from "next/link"
-import { ThumbsUp, ThumbsDown, Eye, User, Calendar, Github } from "lucide-react"
+import { ThumbsUp, ThumbsDown, Eye, User, Calendar, Github, Bookmark } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useSupabase } from "@/lib/supabase-provider"
@@ -16,6 +16,7 @@ export default function GamePage() {
   const [game, setGame] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [voted, setVoted] = useState<"up" | "down" | null>(null)
+  const [isFavorite, setIsFavorite] = useState(false)
   const { user, supabase } = useSupabase()
   const { toast } = useToast()
   const router = useRouter()
@@ -76,6 +77,23 @@ export default function GamePage() {
             }
           } catch (error) {
             console.error("Exception when checking vote status:", error);
+          }
+        }
+        
+        // Check if game is favorited
+        if (user) {
+          const { data: favoriteData, error: favoriteError } = await supabase
+            .from('favorites')
+            .select('id')
+            .eq('game_id', id)
+            .eq('user_id', user.id)
+            .maybeSingle();
+          
+          if (favoriteError) {
+            console.error("Error fetching favorite status:", favoriteError);
+          } else {
+            setIsFavorite(!!favoriteData);
+            console.log("Favorite status:", !!favoriteData);
           }
         }
         
@@ -180,6 +198,86 @@ export default function GamePage() {
     }
   }
 
+  const toggleFavorite = async () => {
+    if (!user) {
+      toast({
+        title: "Authentication required",
+        description: "Please log in to favorite games",
+        variant: "destructive",
+      })
+      return
+    }
+
+    try {
+      if (isFavorite) {
+        // Remove from favorites
+        console.log(`Removing game ${id} from favorites for user ${user.id}`);
+        const { error } = await supabase
+          .from('favorites')
+          .delete()
+          .eq('game_id', id)
+          .eq('user_id', user.id)
+        
+        if (error) {
+          console.error("Error removing favorite:", error);
+          throw error;
+        }
+        
+        console.log("Successfully removed from favorites");
+        setIsFavorite((prevState) => {
+          console.log("Setting isFavorite to:", !prevState);
+          return !prevState;
+        });
+        toast({
+          title: "Removed from favorites",
+          description: `${game.title} has been removed from your favorites`,
+        })
+
+        // Update the UI with the new favorites count
+        setGame((prev: any) => ({ 
+          ...prev, 
+          favorites_count: (prev.favorites_count || 0) - 1  // Remove favorite
+        }));
+      } else {
+        // Add to favorites
+        console.log(`Adding game ${id} to favorites for user ${user.id}`);
+        const { error } = await supabase
+          .from('favorites')
+          .insert({
+            game_id: id,
+            user_id: user.id
+          })
+        
+        if (error) {
+          console.error("Error adding favorite:", error);
+          throw error;
+        }
+        
+        console.log("Successfully added to favorites");
+        setIsFavorite((prevState) => {
+          console.log("Setting isFavorite to:", !prevState);
+          return !prevState;
+        });
+        toast({
+          title: "Added to favorites",
+          description: `${game.title} has been added to your favorites`,
+        })
+
+        // Update the UI with the new favorites count
+        setGame((prev: any) => ({ 
+          ...prev, 
+          favorites_count: (prev.favorites_count || 0) + 1  // Add favorite
+        }));
+      }
+    } catch (error: any) {
+      toast({
+        title: "Failed to update favorites",
+        description: error.message,
+        variant: "destructive",
+      })
+    }
+  }
+
   if (loading) {
     return (
       <div className="container mx-auto flex min-h-[70vh] items-center justify-center px-4">
@@ -238,49 +336,69 @@ export default function GamePage() {
                   <User className="h-4 w-4 text-primary" />
                   <span>{game.creator}</span>
                 </Link>
-
-                <div className="flex items-center space-x-1 text-sm text-white">
+                
+                <div className="flex items-center space-x-2 text-sm text-white">
                   <Calendar className="h-4 w-4 text-primary" />
-                  <span>{new Date(game.releaseDate).toLocaleDateString()}</span>
+                  <span>{new Date(game.created_at).toLocaleDateString()}</span>
                 </div>
               </div>
 
-              <div className="flex items-center space-x-6">
-                <div className="flex items-center space-x-4">
-                  <button
-                    onClick={() => handleVote("up")}
-                    className={`flex items-center space-x-1 ${voted === "up" ? "text-primary" : "hover:text-primary"}`}
-                  >
-                    <ThumbsUp className="h-5 w-5 text-primary" />
-                    <span className="text-white">{game.likes.toLocaleString()}</span>
-                  </button>
-
-                  <button
-                    onClick={() => handleVote("down")}
-                    className={`flex items-center space-x-1 ${voted === "down" ? "text-destructive" : "hover:text-destructive"}`}
-                  >
-                    <ThumbsDown className="h-5 w-5 text-primary" />
-                    <span className="text-white">{game.dislikes.toLocaleString()}</span>
-                  </button>
-                </div>
-
-                <div className="flex items-center space-x-1 text-white">
-                  <Eye className="h-5 w-5 text-primary" />
-                  <span>{game.views.toLocaleString()}</span>
-                </div>
-              </div>
-
-              {game.githubUrl && (
+              {game.github_url && (
                 <Link
-                  href={game.githubUrl}
+                  href={game.github_url}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="flex items-center space-x-2 text-sm text-white hover:text-primary"
                 >
                   <Github className="h-4 w-4 text-primary" />
-                  <span>View Source Code</span>
+                  <span>View Source</span>
                 </Link>
               )}
+
+              <div className="flex flex-wrap items-center gap-4 text-sm">
+                <div className="flex items-center gap-2">
+                  <Button
+                    onClick={() => handleVote("up")}
+                    variant="ghost"
+                    className="flex h-auto items-center gap-1 p-0 hover:text-gray-300"
+                    title="Upvote"
+                  >
+                    <ThumbsUp className={voted === "up" ? "h-5 w-5 fill-primary text-primary" : "h-5 w-5 text-primary"} />
+                    <span className="text-white">{game.likes || 0}</span>
+                  </Button>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <Button
+                    onClick={() => handleVote("down")}
+                    variant="ghost"
+                    className="flex h-auto items-center gap-1 p-0 hover:text-gray-300"
+                    title="Downvote"
+                  >
+                    <ThumbsDown className={voted === "down" ? "h-5 w-5 fill-primary text-primary" : "h-5 w-5 text-primary"} />
+                    <span className="text-white">{game.dislikes || 0}</span>
+                  </Button>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <Eye className="h-5 w-5 text-primary" />
+                  <span className="text-white">{game.views || 0}</span>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <Button
+                    onClick={toggleFavorite}
+                    variant="ghost"
+                    className="flex h-auto items-center gap-1 p-0 hover:text-gray-300"
+                    title={isFavorite ? "Remove from favorites" : "Add to favorites"}
+                  >
+                    <Bookmark 
+                      className={isFavorite ? "h-5 w-5 fill-primary text-primary" : "h-5 w-5 text-primary"} 
+                    />
+                    <span className="text-white">{game.favorites_count || 0}</span>
+                  </Button>
+                </div>
+              </div>
             </div>
           </div>
         </div>

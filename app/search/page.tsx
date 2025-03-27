@@ -4,7 +4,7 @@ import { useEffect, useState } from "react"
 import { useSearchParams } from "next/navigation"
 import Link from "next/link"
 import Image from "next/image"
-import { ThumbsUp, Eye, User } from "lucide-react"
+import { ThumbsUp, Eye, User, Bookmark } from "lucide-react"
 import { Button } from "@/components/ui/button"
 
 // Mock data for games
@@ -242,6 +242,10 @@ export default function SearchPage() {
                           <div className="stats-item">
                             <Eye className="h-3 w-3" />
                             <span>{game.views}</span>
+                          </div>
+                          <div className="stats-item">
+                            <Bookmark className="h-3 w-3" />
+                            <span>{game.favorites_count?.toLocaleString() || 0}</span>
                           </div>
                         </div>
                       </div>

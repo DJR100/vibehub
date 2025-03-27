@@ -1,7 +1,7 @@
 import Link from "next/link"
 import Image from "next/image"
 import { Button } from "@/components/ui/button"
-import { ThumbsUp, Eye, User } from "lucide-react"
+import { ThumbsUp, Eye, User, Bookmark } from "lucide-react"
 import TrendingGames from "@/components/trending-games"
 
 // Featured games data
@@ -34,6 +34,17 @@ const featuredGames = [
     tags: ["Racing", "Cyberpunk", "Multiplayer"],
   },
 ]
+
+type Game = {
+  id: number;
+  title: string;
+  image: string;
+  likes: number;
+  views: number;
+  creator: string;
+  tags: string[];
+  favorites_count?: number;
+}
 
 export default function Home() {
   return (
@@ -71,7 +82,7 @@ export default function Home() {
         <div className="container mx-auto px-4">
           <h2 className="pixel-text mb-8 text-center text-3xl font-bold text-primary">Featured Games</h2>
           <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-            {featuredGames.map((game) => (
+            {featuredGames.map((game: Game) => (
               <Link key={game.id} href={`/game/${game.id}`} className="game-card">
                 <Image
                   src={game.image || "/placeholder.svg"}
@@ -103,6 +114,10 @@ export default function Home() {
                         <div className="stats-item">
                           <Eye className="h-3 w-3 text-primary" />
                           <span>{game.views.toLocaleString()}</span>
+                        </div>
+                        <div className="stats-item">
+                          <Bookmark className="h-3 w-3 text-primary" />
+                          <span>{game.favorites_count?.toLocaleString() || 0}</span>
                         </div>
                       </div>
                     </div>

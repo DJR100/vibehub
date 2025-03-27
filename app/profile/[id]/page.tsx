@@ -4,7 +4,7 @@ import { useState, useEffect } from "react"
 import { useParams, useRouter } from "next/navigation"
 import Image from "next/image"
 import Link from "next/link"
-import { ThumbsUp, Eye, User, Pencil } from "lucide-react"
+import { ThumbsUp, Eye, User, Pencil, Bookmark } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Input } from "@/components/ui/input"
@@ -98,6 +98,7 @@ export default function ProfilePage() {
   const [profileUser, setProfileUser] = useState<any>(null)
   const [isOwnProfile, setIsOwnProfile] = useState(false)
   const [userGames, setUserGames] = useState<any[]>([])
+  const [favoriteGames, setFavoriteGames] = useState<any[]>([])
 
   useEffect(() => {
     if (!user && !id) {
@@ -137,32 +138,85 @@ export default function ProfilePage() {
           }
 
           // Also fetch the user's games
-          const fetchUserGames = async (userId: string) => {
-            const { data: userGames, error } = await supabase
-              .from('games')
-              .select('*')
-              .eq('creator_id', userId)
-              .order('id', { ascending: false });
-            
-            if (error) {
-              console.error('Error fetching user games:', error);
-              return [];
-            }
-            
-            return userGames || [];
-          };
+          const { data: userGamesData, error: userGamesError } = await supabase
+            .from('games')
+            .select(`
+              id,
+              title,
+              image,
+              likes,
+              dislikes,
+              views,
+              favorites_count,
+              genres,
+              created_at
+            `)
+            .eq('creator_id', id)
+            .order('created_at', { ascending: false });
           
-          // Call the function inside the async function context
-          const userId = Array.isArray(id) ? id[0] : id;
-          const games = await fetchUserGames(userId);
-          setUserGames(games);
+          if (userGamesError) {
+            console.error('Error fetching user games:', userGamesError);
+            return [];
+          }
+          
+          setUserGames(userGamesData || []);
+
+          // Fetch favorite games
+          if (user) {
+            try {
+              console.log(`Fetching favorites for user ${id}`);
+              const { data: favoritesData, error: favoritesError } = await supabase
+                .from('favorites')
+                .select(`
+                  game_id,
+                  games:game_id (
+                    id, 
+                    title, 
+                    image, 
+                    likes, 
+                    views, 
+                    favorites_count,
+                    genres,
+                    creator_id,
+                    profiles:creator_id (username)
+                  )
+                `)
+                .eq('user_id', id)
+              
+              if (favoritesError) {
+                console.error("Error fetching favorites:", favoritesError);
+                toast({
+                  title: "Error loading favorites",
+                  description: "Could not load favorites at this time",
+                  variant: "destructive",
+                });
+              } else if (favoritesData && favoritesData.length > 0) {
+                // Format the favorites data
+                const formattedFavorites = favoritesData
+                  .filter((item: any) => item.games)
+                  .map((item: any) => ({
+                    id: item.games.id,
+                    title: item.games.title,
+                    image: item.games.image || "/placeholder.svg",
+                    likes: item.games.likes || 0,
+                    views: item.games.views || 0,
+                    favorites_count: item.games.favorites_count || 0,
+                    creator: item.games.profiles?.username || "Unknown Creator",
+                    tags: item.games.genres || []
+                  }));
+                
+                setFavoriteGames(formattedFavorites);
+                console.log(`Loaded ${formattedFavorites.length} favorites`);
+              } else {
+                console.log("No favorites found");
+                setFavoriteGames([]);
+              }
+            } catch (error) {
+              console.error("Exception when fetching favorites:", error);
+            }
+          }
         } catch (error) {
-          console.error("Error loading profile:", error);
-          toast({
-            title: "Error",
-            description: "Could not load profile data",
-            variant: "destructive",
-          });
+          console.error("Error fetching profile data:", error);
         } finally {
           setLoading(false);
         }
@@ -306,7 +360,7 @@ export default function ProfilePage() {
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-white">Games Created</span>
-                  <span className="font-medium text-white">{creatorGames.length}</span>
+                  <span className="font-medium text-white">{userGames.length}</span>
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-white">Total Plays</span>
@@ -376,12 +430,16 @@ export default function ProfilePage() {
                           <h3 className="pixel-text mb-2 text-lg font-bold">{game.title || "Untitled Game"}</h3>
                           <div className="flex space-x-3">
                             <div className="stats-item">
-                              <ThumbsUp className="h-3 w-3" />
+                              <ThumbsUp className="h-3 w-3 text-primary" />
                               <span>{(game.likes || 0).toLocaleString()}</span>
                             </div>
                             <div className="stats-item">
-                              <Eye className="h-3 w-3" />
+                              <Eye className="h-3 w-3 text-primary" />
                               <span>{(game.views || 0).toLocaleString()}</span>
+                            </div>
+                            <div className="stats-item">
+                              <Bookmark className="h-3 w-3 text-primary" />
+                              <span>{(game.favorites_count || 0).toLocaleString()}</span>
                             </div>
                           </div>
                         </div>
@@ -410,7 +468,11 @@ export default function ProfilePage() {
             <TabsContent value="favorites" className="space-y-6">
               <h3 className="pixel-text text-xl font-bold">Favorite Games</h3>
 
-              {favoriteGames.length > 0 ? (
+              {loading ? (
+                <div className="flex h-64 items-center justify-center">
+                  <div className="pixel-text text-lg">Loading favorites...</div>
+                </div>
+              ) : favoriteGames.length > 0 ? (
                 <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
                   {favoriteGames.map((game) => (
                     <Link key={game.id} href={`/game/${game.id}`} className="game-card">
@@ -422,7 +484,7 @@ export default function ProfilePage() {
                       />
                       <div className="game-card-content">
                         <div className="flex flex-wrap gap-2">
-                          {game.tags.slice(0, 2).map((tag) => (
+                          {game.tags.slice(0, 2).map((tag: string) => (
                             <span key={tag} className="tag">
                               {tag}
                             </span>
@@ -444,6 +506,10 @@ export default function ProfilePage() {
                               <div className="stats-item">
                                 <Eye className="h-3 w-3 text-primary" />
                                 <span>{game.views.toLocaleString()}</span>
+                              </div>
+                              <div className="stats-item">
+                                <Bookmark className="h-3 w-3 text-primary" />
+                                <span>{game.favorites_count?.toLocaleString() || 0}</span>
                               </div>
                             </div>
                           </div>

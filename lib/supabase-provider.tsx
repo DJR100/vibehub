@@ -163,7 +163,7 @@ export const SupabaseProvider = ({ children }: { children: React.ReactNode }) =>
     }
   }
 
-  // Mock sign out function
+  // Update the signOut function to redirect if on profile page
   const signOut = async () => {
     try {
       setLoading(true)
@@ -175,6 +175,12 @@ export const SupabaseProvider = ({ children }: { children: React.ReactNode }) =>
         title: "Signed out",
         description: "You have been signed out successfully",
       })
+      
+      // Check if the current path is on a profile page and redirect if needed
+      const path = window.location.pathname
+      if (path.includes('/profile')) {
+        router.push('/')
+      }
     } catch (error: any) {
       toast({
         title: "Sign out failed",

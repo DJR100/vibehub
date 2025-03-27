@@ -2,7 +2,18 @@
 
 import Link from "next/link"
 import Image from "next/image"
-import { ThumbsUp, Eye, User } from "lucide-react"
+import { ThumbsUp, Eye, User, Bookmark } from "lucide-react"
+
+type Game = {
+  id: number;
+  title: string;
+  image: string;
+  likes: number;
+  views: number;
+  creator: string;
+  tags: string[];
+  favorites_count?: number;
+}
 
 const trendingGames = [
   {
@@ -64,7 +75,7 @@ const trendingGames = [
 export default function TrendingGames() {
   return (
     <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-      {trendingGames.map((game) => (
+      {trendingGames.map((game: Game) => (
         <Link key={game.id} href={`/game/${game.id}`} className="game-card">
           <Image
             src={game.image || "/placeholder.svg"}
@@ -96,6 +107,10 @@ export default function TrendingGames() {
                   <div className="stats-item">
                     <Eye className="h-3 w-3 text-primary" />
                     <span>{game.views.toLocaleString()}</span>
+                  </div>
+                  <div className="stats-item">
+                    <Bookmark className="h-3 w-3 text-primary" />
+                    <span>{game.favorites_count?.toLocaleString() || 0}</span>
                   </div>
                 </div>
               </div>
