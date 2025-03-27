@@ -421,43 +421,98 @@ export default function GamePage() {
               </TabsTrigger>
             </TabsList>
 
-            <TabsContent value="play" className="space-y-4">
-              <div className="relative aspect-[16/9] overflow-hidden rounded-lg border border-gray-800 bg-black">
-                <iframe
-                  src={game.iframeUrl}
-                  title={game.title}
-                  className="absolute inset-0 h-full w-full"
-                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                  allowFullScreen
-                ></iframe>
-              </div>
-
-              <div className="rounded-lg border border-gray-800 bg-card p-4">
-                <h3 className="pixel-text mb-2 text-lg text-primary">How to Play</h3>
-                <p className="text-white">
-                  Use WASD or arrow keys to move. Mouse to aim and left-click to shoot. Press Space to jump and E to
-                  interact with objects.
-                </p>
+            <TabsContent value="play" className="space-y-6">
+              {game.iframe_url ? (
+                <div className="flex flex-col space-y-4">
+                  <div className="aspect-video w-full overflow-hidden rounded-lg border border-gray-800">
+                    <iframe
+                      src={game.iframe_url}
+                      className="h-full w-full"
+                      allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                      allowFullScreen
+                      title={game.title}
+                    ></iframe>
+                  </div>
+                  
+                  <div className="flex justify-center">
+                    <Link href={game.iframe_url} target="_blank" rel="noopener noreferrer">
+                      <Button className="pixel-button">
+                        Play in New Tab
+                      </Button>
+                    </Link>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex h-64 flex-col items-center justify-center rounded-lg border border-dashed border-gray-700 p-8 text-center">
+                  <p className="mb-4 text-gray-400">This game doesn't have a playable URL.</p>
+                </div>
+              )}
+              
+              <div className="rounded-lg border border-gray-800 bg-card p-6">
+                <h3 className="pixel-text mb-4 text-lg font-bold text-primary">How to Play</h3>
+                {game.how_to_play ? (
+                  <div className="prose prose-invert max-w-none">
+                    <p className="text-gray-300">{game.how_to_play}</p>
+                  </div>
+                ) : (
+                  <p className="text-gray-400">No play instructions provided for this game.</p>
+                )}
               </div>
             </TabsContent>
 
             <TabsContent value="about" className="space-y-6">
               <div className="rounded-lg border border-gray-800 bg-card p-6">
-                <h3 className="pixel-text mb-4 text-xl text-primary">About This Game</h3>
-                <p className="whitespace-pre-line text-white">{game.longDescription}</p>
+                <h3 className="pixel-text mb-4 text-lg font-bold text-primary">About This Game</h3>
+                {game.long_description ? (
+                  <div className="prose prose-invert max-w-none">
+                    <p className="text-gray-300">{game.long_description}</p>
+                  </div>
+                ) : (
+                  <p className="text-gray-400">No detailed description provided for this game.</p>
+                )}
               </div>
-
+              
               <div className="rounded-lg border border-gray-800 bg-card p-6">
-                <h3 className="pixel-text mb-4 text-xl text-primary">Creator</h3>
-                <Link href={`/profile/${game.creatorId}`} className="flex items-center space-x-4">
-                  <div className="relative h-16 w-16 overflow-hidden rounded-full">
-                    <Image src="/placeholder.svg?height=64&width=64" alt={game.creator} fill className="object-cover" />
+                <h3 className="pixel-text mb-4 text-lg font-bold text-primary">Game Details</h3>
+                <div className="space-y-4">
+                  <div className="flex flex-col space-y-1">
+                    <span className="text-sm font-medium text-gray-400">Genre</span>
+                    <div className="flex flex-wrap gap-2">
+                      {game.genres?.map((genre: string) => (
+                        <span key={genre} className="tag">{genre}</span>
+                      ))}
+                    </div>
                   </div>
-                  <div>
-                    <h4 className="text-lg font-medium text-primary">{game.creator}</h4>
-                    <p className="text-sm text-white">Game Developer</p>
+                  
+                  <div className="flex flex-col space-y-1">
+                    <span className="text-sm font-medium text-gray-400">Built With</span>
+                    <div className="flex flex-wrap gap-2">
+                      {game.ai_tools?.map((tool: string) => (
+                        <span key={tool} className="tag">{tool}</span>
+                      ))}
+                    </div>
                   </div>
-                </Link>
+                  
+                  <div className="flex flex-col space-y-1">
+                    <span className="text-sm font-medium text-gray-400">Multiplayer</span>
+                    <span>{game.is_multiplayer ? "Yes" : "No"}</span>
+                  </div>
+                  
+                  {game.github_url && (
+                    <div className="flex flex-col space-y-1">
+                      <span className="text-sm font-medium text-gray-400">Source Code</span>
+                      <Link 
+                        href={game.github_url} 
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center text-primary hover:underline"
+                      >
+                        <Github className="mr-2 h-4 w-4" />
+                        View on GitHub
+                      </Link>
+                    </div>
+                  )}
+                </div>
               </div>
             </TabsContent>
           </Tabs>

@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
 import { useToast } from "@/components/ui/use-toast"
-import { X, Plus, ChevronDown } from "lucide-react"
+import { X, Plus, ChevronDown, Loader2 } from "lucide-react"
 import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
@@ -27,11 +27,13 @@ export default function UploadPage() {
   const [title, setTitle] = useState("")
   const [description, setDescription] = useState("")
   const [longDescription, setLongDescription] = useState("")
+  const [howToPlay, setHowToPlay] = useState("")
   const [iframeUrl, setIframeUrl] = useState("")
   const [githubUrl, setGithubUrl] = useState("")
   const [genres, setGenres] = useState<string[]>([])
   const [aiTools, setAiTools] = useState<string[]>([])
   const [tags, setTags] = useState<string[]>([])
+  const [tagInput, setTagInput] = useState("")
   const [currentTag, setCurrentTag] = useState("")
   const [isMultiplayer, setIsMultiplayer] = useState(false)
   const [imageFile, setImageFile] = useState<File | null>(null)
@@ -222,17 +224,19 @@ export default function UploadPage() {
         title,
         description,
         long_description: longDescription,
+        how_to_play: howToPlay,
         image: imageUrl,
         creator_id: user.id,
-        iframe_url: iframeUrl, // Make sure this is included!
-        github_url: githubUrl || "", // Use empty string if null
+        iframe_url: iframeUrl,
+        github_url: githubUrl || "",
         tags,
         genres,
         ai_tools: aiTools,
         is_multiplayer: isMultiplayer,
         likes: 0,
         dislikes: 0,
-        views: 0
+        views: 0,
+        favorites_count: 0
       });
 
       const { data: game, error: insertError } = await supabase
@@ -240,18 +244,20 @@ export default function UploadPage() {
         .insert({
           title,
           description,
-          long_description: longDescription || "", // Use empty string if null
+          long_description: longDescription,
+          how_to_play: howToPlay,
           image: imageUrl,
           creator_id: user.id,
-          iframe_url: iframeUrl, // This was missing or null
-          github_url: githubUrl || "", // Use empty string if null
+          iframe_url: iframeUrl,
+          github_url: githubUrl || "",
           tags,
           genres,
           ai_tools: aiTools,
           is_multiplayer: isMultiplayer,
           likes: 0,
           dislikes: 0,
-          views: 0
+          views: 0,
+          favorites_count: 0
         })
         .select()
         .single();
@@ -328,40 +334,56 @@ export default function UploadPage() {
                 id="description"
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
-                placeholder="A brief description of your game (max 150 characters)"
-                maxLength={150}
+                placeholder="A brief description of your game (displayed in search results)"
+                className="min-h-[80px]"
                 required
-                className="pixel-input"
               />
-              <p className="text-xs text-gray-400">{description.length}/150 characters</p>
             </div>
 
             {/* Long Description */}
             <div className="space-y-2">
-              <Label htmlFor="longDescription">Full Description</Label>
+              <Label htmlFor="longDescription">About This Game</Label>
+              <p className="text-sm text-gray-400 mb-2">
+                Tell players about your game's story, features, and what makes it special.
+              </p>
               <Textarea
                 id="longDescription"
                 value={longDescription}
                 onChange={(e) => setLongDescription(e.target.value)}
-                placeholder="A detailed description of your game, gameplay, controls, etc."
-                className="pixel-input min-h-[150px]"
-                required
+                placeholder="Provide detailed information about your game, its story, main features, and what makes it unique."
+                className="min-h-[150px]"
+              />
+            </div>
+
+            {/* How to Play */}
+            <div className="space-y-2">
+              <Label htmlFor="howToPlay">How to Play</Label>
+              <p className="text-sm text-gray-400 mb-2">
+                Explain the controls and basic instructions for playing your game.
+              </p>
+              <Textarea
+                id="howToPlay"
+                value={howToPlay}
+                onChange={(e) => setHowToPlay(e.target.value)}
+                placeholder="Explain game controls, objectives, and any tips for players (e.g., 'Use WASD to move, Space to jump, Click to interact')"
+                className="min-h-[150px]"
               />
             </div>
 
             {/* Game URL */}
             <div className="space-y-2">
-              <Label htmlFor="iframeUrl">Game URL</Label>
+              <Label htmlFor="iframeUrl" className="text-lg font-medium text-primary">Game URL (Required)</Label>
+              <p className="text-sm text-gray-400 mb-2">
+                Enter the URL where your game is hosted. This is where players will play your game.
+              </p>
               <Input
                 id="iframeUrl"
                 value={iframeUrl}
                 onChange={(e) => setIframeUrl(e.target.value)}
                 placeholder="https://your-game-url.com"
-                type="url"
+                className="w-full"
                 required
-                className="pixel-input"
               />
-              <p className="text-xs text-gray-400">URL where your game is hosted (Vercel, Netlify, etc.)</p>
             </div>
 
             {/* GitHub URL */}
@@ -553,9 +575,18 @@ export default function UploadPage() {
             </div>
 
             {/* Submit Button */}
-            <Button type="submit" className="pixel-button w-full" disabled={loading}>
-              {loading ? "Uploading..." : "Upload Game"}
-            </Button>
+            <div className="mt-6 flex justify-end">
+              <Button type="submit" className="pixel-button" disabled={loading}>
+                {loading ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Uploading...
+                  </>
+                ) : (
+                  "Upload Game"
+                )}
+              </Button>
+            </div>
           </form>
         </div>
       </div>
