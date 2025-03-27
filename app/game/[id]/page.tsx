@@ -44,6 +44,17 @@ export default function GamePage() {
           return
         }
         
+        // Fetch play count for this game
+        const { count: playCount, error: playCountError } = await supabase
+          .from('play_history')
+          .select('*', { count: 'exact' })
+          .eq('game_id', id);
+
+        if (!playCountError) {
+          // Add play count to game data
+          gameData.play_count = playCount || 0;
+        }
+        
         // Format the game data to match the expected structure
         const formattedGame = {
           ...gameData,
@@ -278,6 +289,35 @@ export default function GamePage() {
     }
   }
 
+  const handlePlayGame = async () => {
+    if (!user) {
+      // If user is not logged in, just open the game
+      window.open(game.iframe_url, '_blank');
+      return;
+    }
+
+    try {
+      // Track the play first
+      const { error } = await supabase
+        .from('play_history')
+        .insert({
+          game_id: id,
+          user_id: user.id
+        });
+
+      if (error) {
+        console.error('Error tracking game play:', error);
+      }
+      
+      // Open game in new tab
+      window.open(game.iframe_url, '_blank');
+    } catch (error) {
+      console.error('Error tracking game play:', error);
+      // Still open the game even if tracking fails
+      window.open(game.iframe_url, '_blank');
+    }
+  };
+
   if (loading) {
     return (
       <div className="container mx-auto flex min-h-[70vh] items-center justify-center px-4">
@@ -382,7 +422,7 @@ export default function GamePage() {
 
                 <div className="flex items-center gap-2">
                   <Eye className="h-5 w-5 text-primary" />
-                  <span className="text-white">{game.views || 0}</span>
+                  <span className="text-white">{game.play_count || 0}</span>
                 </div>
 
                 <div className="flex items-center gap-2">
@@ -435,11 +475,9 @@ export default function GamePage() {
                   </div>
                   
                   <div className="flex justify-center">
-                    <Link href={game.iframe_url} target="_blank" rel="noopener noreferrer">
-                      <Button className="pixel-button">
-                        Play in New Tab
-                      </Button>
-                    </Link>
+                    <Button onClick={handlePlayGame} className="pixel-button">
+                      Play in New Tab
+                    </Button>
                   </div>
                 </div>
               ) : (

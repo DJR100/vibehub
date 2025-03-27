@@ -301,6 +301,12 @@ export default function ProfilePage() {
   const [favoriteGames, setFavoriteGames] = useState<any[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
+  const [profileStats, setProfileStats] = useState({
+    gamesPlayed: 0,
+    totalPlays: 0,
+    favoritesCount: favoriteGames.length,
+    gamesCreated: userGames.length
+  });
 
   useEffect(() => {
     if (!user && !id) {
@@ -339,7 +345,7 @@ export default function ProfilePage() {
             setIsOwnProfile(false)
           }
 
-          // Also fetch the user's games
+          // Fetch the user's games
           const { data: userGamesData, error: userGamesError } = await supabase
             .from('games')
             .select(`
@@ -356,12 +362,25 @@ export default function ProfilePage() {
             .eq('creator_id', id)
             .order('created_at', { ascending: false });
           
-          if (userGamesError) {
+          if (!userGamesError && userGamesData) {
+            // For each game, fetch play count
+            const gamesWithPlayCounts = await Promise.all(userGamesData.map(async (game) => {
+              const { count: playCount, error: playCountError } = await supabase
+                .from('play_history')
+                .select('*', { count: 'exact' })
+                .eq('game_id', game.id);
+              
+              return {
+                ...game,
+                play_count: playCount || 0
+              };
+            }));
+            
+            setUserGames(gamesWithPlayCounts || []);
+          } else {
             console.error('Error fetching user games:', userGamesError);
-            return [];
+            setUserGames([]);
           }
-          
-          setUserGames(userGamesData || []);
 
           // Fetch favorite games
           if (user) {
@@ -393,20 +412,29 @@ export default function ProfilePage() {
                   variant: "destructive",
                 });
               } else if (favoritesData && favoritesData.length > 0) {
-                // Format the favorites data
-                const formattedFavorites = favoritesData
+                // Format the favorites data and get play counts
+                const formattedFavoritesPromises = favoritesData
                   .filter((item: any) => item.games)
-                  .map((item: any) => ({
-                    id: item.games.id,
-                    title: item.games.title,
-                    image: item.games.image || "/placeholder.svg",
-                    likes: item.games.likes || 0,
-                    views: item.games.views || 0,
-                    favorites_count: item.games.favorites_count || 0,
-                    creator: item.games.profiles?.username || "Unknown Creator",
-                    tags: item.games.genres || []
-                  }));
+                  .map(async (item: any) => {
+                    // Get play count for this game
+                    const { count: playCount, error: playCountError } = await supabase
+                      .from('play_history')
+                      .select('*', { count: 'exact' })
+                      .eq('game_id', item.games.id);
+                    
+                    return {
+                      id: item.games.id,
+                      title: item.games.title,
+                      image: item.games.image || "/placeholder.svg",
+                      likes: item.games.likes || 0,
+                      play_count: playCount || 0,  // Use play_count instead of views
+                      favorites_count: item.games.favorites_count || 0,
+                      creator: item.games.profiles?.username || "Unknown Creator",
+                      tags: item.games.genres || []
+                    };
+                  });
                 
+                const formattedFavorites = await Promise.all(formattedFavoritesPromises);
                 setFavoriteGames(formattedFavorites);
                 console.log(`Loaded ${formattedFavorites.length} favorites`);
               } else {
@@ -432,6 +460,61 @@ export default function ProfilePage() {
       setBio(profileUser.bio || "")
     }
   }, [user, router, id, supabase])
+
+  useEffect(() => {
+    const fetchPlayStats = async () => {
+      if (!profileUser?.id) return;
+
+      try {
+        // Fetch all play history records
+        const { data: playHistoryData } = await supabase
+          .from('play_history')
+          .select('game_id')
+          .eq('user_id', profileUser.id);
+
+        // Process data client-side to count unique games
+        const uniqueGameIds = new Set();
+        playHistoryData?.forEach((item: { game_id: string | number }) => {
+          if (item.game_id) uniqueGameIds.add(item.game_id);
+        });
+
+        // The size of the Set gives us the count of unique games
+        const uniqueGamesCount = uniqueGameIds.size;
+
+        // Get total play count
+        const { count: totalPlays, error: countError } = await supabase
+          .from('play_history')
+          .select('*', { count: 'exact' })
+          .eq('user_id', profileUser.id);
+
+        // Get favorites count
+        const { count: favoritesCount, error: favoritesError } = await supabase
+          .from('favorites')
+          .select('*', { count: 'exact' })
+          .eq('user_id', profileUser.id);
+
+        // Get games created count
+        const { count: gamesCreated, error: gamesError } = await supabase
+          .from('games')
+          .select('*', { count: 'exact' })
+          .eq('creator_id', profileUser.id);
+
+        if (!countError && !favoritesError && !gamesError) {
+          setProfileStats(prev => ({
+            ...prev,
+            gamesPlayed: uniqueGamesCount,
+            totalPlays: totalPlays || 0,
+            favoritesCount: favoritesCount || 0,
+            gamesCreated: gamesCreated || 0
+          }));
+        }
+      } catch (error) {
+        console.error('Error fetching play stats:', error);
+      }
+    };
+
+    fetchPlayStats();
+  }, [profileUser?.id, supabase]);
 
   const handleSaveProfile = async (profileData: ProfileData) => {
     if (!user) return;
@@ -492,6 +575,32 @@ export default function ProfilePage() {
   const handleEditProfile = () => {
     setIsEditDialogOpen(true)
   }
+
+  const handlePlayGame = async (gameId: string, gameUrl: string) => {
+    if (!user) {
+      // If user is not logged in, just open the game
+      window.open(gameUrl, '_blank');
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from('play_history')
+        .insert({
+          game_id: gameId,
+          user_id: user.id
+        });
+
+      if (error) {
+        console.error('Error tracking game play:', error);
+      }
+      
+      // Open game in new tab
+      window.open(gameUrl, '_blank');
+    } catch (error) {
+      console.error('Error tracking game play:', error);
+    }
+  };
 
   if (!profileUser) {
     return (
@@ -555,19 +664,19 @@ export default function ProfilePage() {
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
                   <span className="text-white">Games Played</span>
-                  <span className="font-medium text-white">24</span>
+                  <span className="font-medium text-white">{profileStats.gamesPlayed}</span>
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-white">Favorites</span>
-                  <span className="font-medium text-white">{favoriteGames.length}</span>
+                  <span className="font-medium text-white">{profileStats.favoritesCount}</span>
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-white">Games Created</span>
-                  <span className="font-medium text-white">{userGames.length}</span>
+                  <span className="font-medium text-white">{profileStats.gamesCreated}</span>
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-white">Total Plays</span>
-                  <span className="font-medium text-white">{(14408).toLocaleString()}</span>
+                  <span className="font-medium text-white">{profileStats.totalPlays.toLocaleString()}</span>
                 </div>
               </div>
             </div>
@@ -638,7 +747,7 @@ export default function ProfilePage() {
                             </div>
                             <div className="stats-item">
                               <Eye className="h-3 w-3 text-primary" />
-                              <span>{(game.views || 0).toLocaleString()}</span>
+                              <span>{(game.play_count || 0).toLocaleString()} plays</span>
                             </div>
                             <div className="stats-item">
                               <Bookmark className="h-3 w-3 text-primary" />
@@ -708,7 +817,7 @@ export default function ProfilePage() {
                               </div>
                               <div className="stats-item">
                                 <Eye className="h-3 w-3 text-primary" />
-                                <span>{game.views.toLocaleString()}</span>
+                                <span>{(game.play_count || 0).toLocaleString()} plays</span>
                               </div>
                               <div className="stats-item">
                                 <Bookmark className="h-3 w-3 text-primary" />

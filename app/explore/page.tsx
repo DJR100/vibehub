@@ -21,7 +21,7 @@ const allGames = [
     image: "/placeholder.svg?height=400&width=600",
     creator: "PixelWizard",
     likes: 1243,
-    views: 8976,
+    play_count: 8976,
     tags: ["RPG", "Roguelike", "Pixel Art"],
     genre: "RPG",
     multiplayer: false,
@@ -33,7 +33,7 @@ const allGames = [
     image: "/placeholder.svg?height=400&width=600",
     creator: "AIGameDev",
     likes: 892,
-    views: 5432,
+    play_count: 5432,
     tags: ["Shooter", "Arcade", "Space"],
     genre: "Shooter",
     multiplayer: true,
@@ -45,7 +45,7 @@ const allGames = [
     image: "/placeholder.svg?height=400&width=600",
     creator: "SynthWave",
     likes: 756,
-    views: 4321,
+    play_count: 4321,
     tags: ["Racing", "Cyberpunk", "Multiplayer"],
     genre: "Racing",
     multiplayer: true,
@@ -57,7 +57,7 @@ const allGames = [
     image: "/placeholder.svg?height=400&width=600",
     creator: "SurvivalGuru",
     likes: 543,
-    views: 3210,
+    play_count: 3210,
     tags: ["Survival", "Horror", "Action"],
     genre: "Survival",
     multiplayer: true,
@@ -69,7 +69,7 @@ const allGames = [
     image: "/placeholder.svg?height=400&width=600",
     creator: "BrainTeaser",
     likes: 421,
-    views: 2876,
+    play_count: 2876,
     tags: ["Puzzle", "Logic", "Casual"],
     genre: "Puzzle",
     multiplayer: false,
@@ -81,7 +81,7 @@ const allGames = [
     image: "/placeholder.svg?height=400&width=600",
     creator: "RPGLover",
     likes: 387,
-    views: 2543,
+    play_count: 2543,
     tags: ["RPG", "Fantasy", "Adventure"],
     genre: "RPG",
     multiplayer: false,
@@ -93,7 +93,7 @@ const allGames = [
     image: "/placeholder.svg?height=400&width=600",
     creator: "OldSchoolDev",
     likes: 356,
-    views: 2321,
+    play_count: 2321,
     tags: ["Platformer", "Retro", "2D"],
     genre: "Platformer",
     multiplayer: false,
@@ -105,7 +105,7 @@ const allGames = [
     image: "/placeholder.svg?height=400&width=600",
     creator: "MindMaster",
     likes: 312,
-    views: 1987,
+    play_count: 1987,
     tags: ["Strategy", "Simulation", "Building"],
     genre: "Strategy",
     multiplayer: true,
@@ -117,7 +117,7 @@ const allGames = [
     image: "/placeholder.svg?height=400&width=600",
     creator: "DeckBuilder",
     likes: 298,
-    views: 1765,
+    play_count: 1765,
     tags: ["Card Game", "Strategy", "PvP"],
     genre: "Card Game",
     multiplayer: true,
@@ -129,7 +129,7 @@ const allGames = [
     image: "/placeholder.svg?height=400&width=600",
     creator: "SpeedDemon",
     likes: 276,
-    views: 1654,
+    play_count: 1654,
     tags: ["Runner", "Arcade", "Casual"],
     genre: "Arcade",
     multiplayer: false,
@@ -141,7 +141,7 @@ const allGames = [
     image: "/placeholder.svg?height=400&width=600",
     creator: "StrategyKing",
     likes: 254,
-    views: 1543,
+    play_count: 1543,
     tags: ["Strategy", "Tower Defense", "Action"],
     genre: "Strategy",
     multiplayer: false,
@@ -153,7 +153,7 @@ const allGames = [
     image: "/placeholder.svg?height=400&width=600",
     creator: "FightMaster",
     likes: 243,
-    views: 1432,
+    play_count: 1432,
     tags: ["Fighting", "Pixel Art", "PvP"],
     genre: "Fighting",
     multiplayer: true,
@@ -209,7 +209,7 @@ type Game = {
   title: string;
   image: string;
   likes: number;
-  views: number;
+  play_count: number;
   creator: string;
   tags: string[];
   favorites_count?: number;
@@ -252,7 +252,7 @@ export default function ExplorePage() {
     if (sortBy === "Most Popular") {
       filteredGames.sort((a, b) => b.likes - a.likes)
     } else if (sortBy === "Most Played") {
-      filteredGames.sort((a, b) => b.views - a.views)
+      filteredGames.sort((a, b) => b.play_count - a.play_count)
     }
     // For 'Newest', we would normally sort by date, but our mock data doesn't have dates
 
@@ -488,7 +488,7 @@ export default function ExplorePage() {
                         </div>
                         <div className="stats-item">
                           <Eye className="h-3 w-3 text-primary" />
-                          <span className="text-white">{game.views.toLocaleString()}</span>
+                          <span className="text-white">{game.play_count?.toLocaleString() || 0} plays</span>
                         </div>
                         <div className="stats-item">
                           <Bookmark className="h-3 w-3 text-primary" />

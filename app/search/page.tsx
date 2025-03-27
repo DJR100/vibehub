@@ -241,7 +241,7 @@ export default function SearchPage() {
                           </div>
                           <div className="stats-item">
                             <Eye className="h-3 w-3" />
-                            <span>{game.views}</span>
+                            <span>{game.play_count?.toLocaleString() || 0} plays</span>
                           </div>
                           <div className="stats-item">
                             <Bookmark className="h-3 w-3" />

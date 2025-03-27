@@ -9,7 +9,7 @@ type Game = {
   title: string;
   image: string;
   likes: number;
-  views: number;
+  play_count: number;
   creator: string;
   tags: string[];
   favorites_count?: number;
@@ -22,7 +22,7 @@ const trendingGames = [
     image: "/placeholder.svg?height=400&width=600",
     creator: "SurvivalGuru",
     likes: 543,
-    views: 3210,
+    play_count: 3210,
     tags: ["Survival", "Horror", "Action"],
   },
   {
@@ -31,7 +31,7 @@ const trendingGames = [
     image: "/placeholder.svg?height=400&width=600",
     creator: "BrainTeaser",
     likes: 421,
-    views: 2876,
+    play_count: 2876,
     tags: ["Puzzle", "Logic", "Casual"],
   },
   {
@@ -40,7 +40,7 @@ const trendingGames = [
     image: "/placeholder.svg?height=400&width=600",
     creator: "RPGLover",
     likes: 387,
-    views: 2543,
+    play_count: 2543,
     tags: ["RPG", "Fantasy", "Adventure"],
   },
   {
@@ -49,7 +49,7 @@ const trendingGames = [
     image: "/placeholder.svg?height=400&width=600",
     creator: "OldSchoolDev",
     likes: 356,
-    views: 2321,
+    play_count: 2321,
     tags: ["Platformer", "Retro", "2D"],
   },
   {
@@ -58,7 +58,7 @@ const trendingGames = [
     image: "/placeholder.svg?height=400&width=600",
     creator: "MindMaster",
     likes: 312,
-    views: 1987,
+    play_count: 1987,
     tags: ["Strategy", "Simulation", "Building"],
   },
   {
@@ -67,7 +67,7 @@ const trendingGames = [
     image: "/placeholder.svg?height=400&width=600",
     creator: "DeckBuilder",
     likes: 298,
-    views: 1765,
+    play_count: 1765,
     tags: ["Card Game", "Strategy", "PvP"],
   },
 ]
@@ -106,7 +106,7 @@ export default function TrendingGames() {
                   </div>
                   <div className="stats-item">
                     <Eye className="h-3 w-3 text-primary" />
-                    <span>{game.views.toLocaleString()}</span>
+                    <span>{game.play_count?.toLocaleString() || 0} plays</span>
                   </div>
                   <div className="stats-item">
                     <Bookmark className="h-3 w-3 text-primary" />

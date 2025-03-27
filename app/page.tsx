@@ -44,6 +44,7 @@ type Game = {
   creator: string;
   tags: string[];
   favorites_count?: number;
+  play_count?: number;
 }
 
 export default function Home() {
@@ -113,7 +114,7 @@ export default function Home() {
                         </div>
                         <div className="stats-item">
                           <Eye className="h-3 w-3 text-primary" />
-                          <span>{game.views.toLocaleString()}</span>
+                          <span>{game.play_count?.toLocaleString() || 0} plays</span>
                         </div>
                         <div className="stats-item">
                           <Bookmark className="h-3 w-3 text-primary" />
