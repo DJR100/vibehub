@@ -88,7 +88,7 @@ const mockUsers = [
 export default function ProfilePage() {
   const params = useParams()
   const { id } = params
-  const { user, updateProfile } = useSupabase()
+  const { user, updateProfile, supabase } = useSupabase()
   const router = useRouter()
   const { toast } = useToast()
   const [isEditing, setIsEditing] = useState(false)
@@ -97,6 +97,7 @@ export default function ProfilePage() {
   const [loading, setLoading] = useState(false)
   const [profileUser, setProfileUser] = useState<any>(null)
   const [isOwnProfile, setIsOwnProfile] = useState(false)
+  const [userGames, setUserGames] = useState<any[]>([])
 
   useEffect(() => {
     if (!user && !id) {
@@ -104,27 +105,77 @@ export default function ProfilePage() {
       return
     }
 
-    // If viewing someone else's profile
+    // If viewing someone else's profile OR your own profile by ID
     if (id) {
-      const foundUser = mockUsers.find((u) => u.id === id)
-      if (foundUser) {
-        setProfileUser(foundUser)
-        setIsOwnProfile(user && user.id === id)
-      } else {
-        // User not found, redirect to explore
-        router.push("/explore")
+      // Always fetch the complete profile from the database
+      const fetchProfileData = async () => {
+        setLoading(true)
+        
+        try {
+          const { data, error } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('id', id)
+            .single()
+          
+          if (error || !data) {
+            // User not found, redirect to explore
+            router.push("/explore")
+            return
+          }
+          
+          // Merge auth metadata with profile data for your own profile
+          if (user && user.id === id) {
+            setProfileUser({
+              ...user,
+              ...data
+            })
+            setIsOwnProfile(true)
+          } else {
+            setProfileUser(data)
+            setIsOwnProfile(false)
+          }
+
+          // Also fetch the user's games
+          const fetchUserGames = async (userId: string) => {
+            const { data: userGames, error } = await supabase
+              .from('games')
+              .select('*')
+              .eq('creator_id', userId)
+              .order('id', { ascending: false });
+            
+            if (error) {
+              console.error('Error fetching user games:', error);
+              return [];
+            }
+            
+            return userGames || [];
+          };
+          
+          // Call the function inside the async function context
+          const userId = Array.isArray(id) ? id[0] : id;
+          const games = await fetchUserGames(userId);
+          setUserGames(games);
+        } catch (error) {
+          console.error("Error loading profile:", error);
+          toast({
+            title: "Error",
+            description: "Could not load profile data",
+            variant: "destructive",
+          });
+        } finally {
+          setLoading(false);
+        }
       }
-    } else {
-      // Viewing own profile
-      setProfileUser(user)
-      setIsOwnProfile(true)
+      
+      fetchProfileData()
     }
 
     if (profileUser) {
       setUsername(profileUser.username || profileUser.user_metadata?.username || "")
       setBio(profileUser.bio || "")
     }
-  }, [user, router, id, profileUser])
+  }, [user, router, id, supabase])
 
   const handleSaveProfile = async () => {
     if (!isOwnProfile) return
@@ -229,7 +280,9 @@ export default function ProfilePage() {
               ) : (
                 <>
                   <h2 className="pixel-text mb-2 text-xl font-bold text-primary">{displayName}</h2>
-                  <p className="mb-6 text-sm text-gray-300">{displayBio}</p>
+                  <p className="text-gray-300">
+                    {profileUser?.bio || "No bio yet"}
+                  </p>
                   {isOwnProfile && (
                     <Button onClick={() => setIsEditing(true)} className="pixel-button w-full">
                       <Pencil className="mr-2 h-4 w-4" />
@@ -298,37 +351,37 @@ export default function ProfilePage() {
                 )}
               </div>
 
-              {creatorGames.length > 0 ? (
+              {userGames.length > 0 ? (
                 <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
-                  {creatorGames.map((game) => (
+                  {userGames.map((game: any) => (
                     <Link key={game.id} href={`/game/${game.id}`} className="game-card">
                       <Image
                         src={game.image || "/placeholder.svg"}
-                        alt={game.title}
+                        alt={game.title || "Game"}
                         fill
                         className="object-cover transition-transform duration-300 hover:scale-105"
                       />
                       <div className="game-card-content">
                         <div className="flex flex-wrap gap-2">
-                          {game.tags.slice(0, 2).map((tag) => (
+                          {game.tags && Array.isArray(game.tags) && game.tags.slice(0, 2).map((tag: string) => (
                             <span key={tag} className="tag">
                               {tag}
                             </span>
                           ))}
-                          {game.tags.length > 2 && <span className="tag">+{game.tags.length - 2}</span>}
+                          {game.tags && Array.isArray(game.tags) && game.tags.length > 2 && (
+                            <span className="tag">+{game.tags.length - 2}</span>
+                          )}
                         </div>
                         <div>
-                          <h3 className="pixel-text mb-2 text-lg font-bold text-white">{game.title}</h3>
-                          <div className="flex items-center justify-between">
-                            <div className="flex space-x-3">
-                              <div className="stats-item">
-                                <ThumbsUp className="h-3 w-3 text-primary" />
-                                <span>{game.likes.toLocaleString()}</span>
-                              </div>
-                              <div className="stats-item">
-                                <Eye className="h-3 w-3 text-primary" />
-                                <span>{game.views.toLocaleString()}</span>
-                              </div>
+                          <h3 className="pixel-text mb-2 text-lg font-bold">{game.title || "Untitled Game"}</h3>
+                          <div className="flex space-x-3">
+                            <div className="stats-item">
+                              <ThumbsUp className="h-3 w-3" />
+                              <span>{(game.likes || 0).toLocaleString()}</span>
+                            </div>
+                            <div className="stats-item">
+                              <Eye className="h-3 w-3" />
+                              <span>{(game.views || 0).toLocaleString()}</span>
                             </div>
                           </div>
                         </div>
@@ -337,16 +390,17 @@ export default function ProfilePage() {
                   ))}
                 </div>
               ) : (
-                <div className="flex h-64 flex-col items-center justify-center rounded-lg border border-dashed border-gray-700 p-8 text-center">
-                  <h3 className="pixel-text mb-2 text-xl">No games yet</h3>
-                  <p className="mb-4 text-gray-400">
+                <div className="rounded-lg border border-gray-800 bg-card p-8 text-center">
+                  <p className="text-gray-400">
                     {isOwnProfile
-                      ? "Upload your first game to get started!"
+                      ? "You haven't uploaded any games yet."
                       : "This user hasn't uploaded any games yet."}
                   </p>
                   {isOwnProfile && (
                     <Link href="/upload">
-                      <Button className="pixel-button">Upload Game</Button>
+                      <Button variant="outline" className="mt-4">
+                        Upload Your First Game
+                      </Button>
                     </Link>
                   )}
                 </div>

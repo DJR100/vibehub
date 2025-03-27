@@ -17,9 +17,10 @@ import {
   DropdownMenuContent,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import Image from "next/image"
 
 export default function UploadPage() {
-  const { user } = useSupabase()
+  const { user, supabase } = useSupabase()
   const router = useRouter()
   const { toast } = useToast()
   const [loading, setLoading] = useState(false)
@@ -33,6 +34,8 @@ export default function UploadPage() {
   const [tags, setTags] = useState<string[]>([])
   const [currentTag, setCurrentTag] = useState("")
   const [isMultiplayer, setIsMultiplayer] = useState(false)
+  const [imageFile, setImageFile] = useState<File | null>(null)
+  const [imagePreview, setImagePreview] = useState<string | null>(null)
 
   // Available options
   const genreOptions = [
@@ -84,6 +87,44 @@ export default function UploadPage() {
     }
   }, [user, router])
 
+  useEffect(() => {
+    if (user) {
+      console.log("User ID:", user.id);
+      
+      // Test a direct insert from the browser
+      const testInsert = async () => {
+        try {
+          console.log("Testing direct insert...");
+          const { data, error } = await supabase
+            .from('games')
+            .insert({
+              title: "Test Game from Browser",
+              description: "This is a test",
+              image: "/placeholder.svg",
+              creator_id: user.id,
+              genres: ["RPG"],
+              ai_tools: ["GPT-4"],
+              likes: 0,
+              dislikes: 0,
+              views: 0
+            })
+            .select();
+          
+          if (error) {
+            console.error("Test insert error:", error);
+          } else {
+            console.log("Test insert successful:", data);
+          }
+        } catch (err) {
+          console.error("Test insert exception:", err);
+        }
+      };
+      
+      // Uncomment this line to run the test
+      // testInsert();
+    }
+  }, [user, supabase]);
+
   const handleAddTag = () => {
     if (currentTag && !tags.includes(currentTag) && tags.length < 5) {
       setTags([...tags, currentTag])
@@ -112,15 +153,16 @@ export default function UploadPage() {
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
+    e.preventDefault();
+    console.log("Form submitted");
 
     if (genres.length === 0) {
       toast({
         title: "Genre required",
         description: "Please select at least one genre for your game",
         variant: "destructive",
-      })
-      return
+      });
+      return;
     }
 
     if (aiTools.length === 0) {
@@ -128,29 +170,128 @@ export default function UploadPage() {
         title: "AI Tool required",
         description: "Please select at least one AI tool used to create your game",
         variant: "destructive",
-      })
-      return
+      });
+      return;
     }
 
-    setLoading(true)
+    // Check for iframe URL
+    if (!iframeUrl) {
+      toast({
+        title: "Game URL required",
+        description: "Please provide a URL where your game is hosted",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setLoading(true);
 
     try {
-      // In a real app, this would upload to Supabase
-      setTimeout(() => {
-        toast({
-          title: "Game uploaded successfully",
-          description: "Your game has been published to VibeHub",
+      // Step 1: Upload game image to storage if provided
+      let imageUrl = "/placeholder.svg";
+      
+      if (imageFile) {
+        const fileExt = imageFile.name.split('.').pop();
+        const fileName = `${Date.now()}.${fileExt}`;
+        const filePath = `${user.id}/${fileName}`;
+        
+        try {
+          const { error: uploadError, data } = await supabase.storage
+            .from('game_images')
+            .upload(filePath, imageFile);
+          
+          if (uploadError) {
+            console.error("Image upload error:", uploadError);
+            // Continue with placeholder image if upload fails
+          } else {
+            // Get the public URL for the uploaded image
+            const { data: urlData } = supabase.storage
+              .from('game_images')
+              .getPublicUrl(filePath);
+            
+            imageUrl = urlData.publicUrl;
+          }
+        } catch (storageError) {
+          console.error("Storage error:", storageError);
+          // Continue with placeholder image
+        }
+      }
+      
+      // Step 2: Insert game data into games table
+      console.log("Inserting game with data:", {
+        title,
+        description,
+        long_description: longDescription,
+        image: imageUrl,
+        creator_id: user.id,
+        iframe_url: iframeUrl, // Make sure this is included!
+        github_url: githubUrl || "", // Use empty string if null
+        tags,
+        genres,
+        ai_tools: aiTools,
+        is_multiplayer: isMultiplayer,
+        likes: 0,
+        dislikes: 0,
+        views: 0
+      });
+
+      const { data: game, error: insertError } = await supabase
+        .from('games')
+        .insert({
+          title,
+          description,
+          long_description: longDescription || "", // Use empty string if null
+          image: imageUrl,
+          creator_id: user.id,
+          iframe_url: iframeUrl, // This was missing or null
+          github_url: githubUrl || "", // Use empty string if null
+          tags,
+          genres,
+          ai_tools: aiTools,
+          is_multiplayer: isMultiplayer,
+          likes: 0,
+          dislikes: 0,
+          views: 0
         })
-        router.push("/profile")
-      }, 1500)
+        .select()
+        .single();
+        
+      if (insertError) {
+        console.error("Database insert error:", insertError);
+        throw insertError;
+      }
+      
+      console.log("Insert successful:", game);
+      
+      toast({
+        title: "Game uploaded successfully",
+        description: "Your game has been published to VibeHub",
+      });
+      
+      router.push(`/game/${game.id}`);
     } catch (error: any) {
+      console.error("Overall error:", error);
       toast({
         title: "Upload failed",
-        description: error.message,
+        description: error.message || "Unknown error occurred",
         variant: "destructive",
-      })
+      });
     } finally {
-      setLoading(false)
+      setLoading(false);
+    }
+  };
+
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0]
+      setImageFile(file)
+      
+      // Create a preview
+      const reader = new FileReader()
+      reader.onloadend = () => {
+        setImagePreview(reader.result as string)
+      }
+      reader.readAsDataURL(file)
     }
   }
 
@@ -234,6 +375,35 @@ export default function UploadPage() {
                 type="url"
                 className="pixel-input"
               />
+            </div>
+
+            {/* Game Image Upload */}
+            <div className="mb-4">
+              <Label htmlFor="image" className="block">Game Image</Label>
+              <div className="mt-1 flex items-center gap-4">
+                <div className="relative h-32 w-32 overflow-hidden rounded-md border border-gray-600">
+                  {imagePreview ? (
+                    <Image
+                      src={imagePreview}
+                      alt="Game preview"
+                      fill
+                      className="object-cover"
+                    />
+                  ) : (
+                    <div className="flex h-full w-full items-center justify-center bg-gray-800 text-gray-400">
+                      No image
+                    </div>
+                  )}
+                </div>
+                <Input
+                  id="image"
+                  type="file"
+                  accept="image/*"
+                  onChange={handleImageChange}
+                  className="mt-1"
+                />
+              </div>
+              <p className="mt-1 text-xs text-gray-400">Upload a thumbnail image for your game (16:9 ratio recommended)</p>
             </div>
 
             {/* Genres - Dropdown Selection */}

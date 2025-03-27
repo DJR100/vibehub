@@ -5,10 +5,11 @@ import type React from "react"
 import { createContext, useContext, useEffect, useState } from "react"
 import { createClient } from "@supabase/supabase-js"
 import { useToast } from "@/components/ui/use-toast"
+import { useRouter } from "next/navigation"
 
 // Create a Supabase client
-const supabaseUrl = "https://example.supabase.co"
-const supabaseKey = "your-anon-key"
+const supabaseUrl = "https://ezwrieepubvnyijvcicp.supabase.co"
+const supabaseKey = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImV6d3JpZWVwdWJ2bnlpanZjaWNwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDMwMTcxNTEsImV4cCI6MjA1ODU5MzE1MX0.B-_kZ9Nb-lrlVuMHVFga2AKaO7i6aXO2lnDGUPiQAAU"
 const supabase = createClient(supabaseUrl, supabaseKey)
 
 // Create context
@@ -26,6 +27,7 @@ export const SupabaseProvider = ({ children }: { children: React.ReactNode }) =>
   const [user, setUser] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const { toast } = useToast()
+  const router = useRouter()
 
   // Mock data for development
   const mockUsers = [
@@ -44,7 +46,7 @@ export const SupabaseProvider = ({ children }: { children: React.ReactNode }) =>
       password: "password",
       role: "creator",
       username: "PixelWizard",
-      bio: "Creating AI-powered games since 2023",
+      bio: "Creating AI-powered games since 2025",
       avatar: "/placeholder.svg?height=100&width=100",
     },
   ]
@@ -87,30 +89,26 @@ export const SupabaseProvider = ({ children }: { children: React.ReactNode }) =>
   const signIn = async (email: string, password: string) => {
     try {
       setLoading(true)
-      // In a real app, this would use supabase.auth.signInWithPassword
-      const mockUser = mockUsers.find((u) => u.email === email && u.password === password)
-
-      if (mockUser) {
-        setUser({
-          ...mockUser,
-          user_metadata: {
-            username: mockUser.username,
-            role: mockUser.role,
-          },
-        })
-        toast({
-          title: "Signed in successfully",
-          description: `Welcome back, ${mockUser.username}!`,
-        })
-        return { user: mockUser, error: null }
-      } else {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password
+      })
+      
+      if (error) {
         toast({
           title: "Sign in failed",
-          description: "Invalid email or password",
+          description: error.message,
           variant: "destructive",
         })
-        return { user: null, error: { message: "Invalid email or password" } }
+        return { user: null, error }
       }
+      
+      toast({
+        title: "Signed in successfully",
+        description: `Welcome back!`,
+      })
+      
+      return { user: data.user, error: null }
     } catch (error: any) {
       toast({
         title: "Sign in failed",
@@ -123,35 +121,36 @@ export const SupabaseProvider = ({ children }: { children: React.ReactNode }) =>
     }
   }
 
-  // Mock sign up function
+  // Replace your mock signUp function with this
   const signUp = async (email: string, password: string, username: string, role: string) => {
     try {
       setLoading(true)
-      // In a real app, this would use supabase.auth.signUp
-      const newUser = {
-        id: String(mockUsers.length + 1),
+      const { data, error } = await supabase.auth.signUp({
         email,
         password,
-        role,
-        username,
-        bio: "",
-        avatar: "/placeholder.svg?height=100&width=100",
-      }
-
-      setUser({
-        ...newUser,
-        user_metadata: {
-          username,
-          role,
-        },
+        options: {
+          data: {
+            username, 
+            role
+          }
+        }
       })
-
+      
+      if (error) {
+        toast({
+          title: "Sign up failed",
+          description: error.message,
+          variant: "destructive",
+        })
+        return { user: null, error }
+      }
+      
       toast({
         title: "Account created",
-        description: `Welcome to VibeHub, ${username}!`,
+        description: `Welcome to VibeHub! Please check your email for confirmation.`,
       })
-
-      return { user: newUser, error: null }
+      
+      return { user: data.user, error: null }
     } catch (error: any) {
       toast({
         title: "Sign up failed",
@@ -168,8 +167,10 @@ export const SupabaseProvider = ({ children }: { children: React.ReactNode }) =>
   const signOut = async () => {
     try {
       setLoading(true)
-      // In a real app, this would use supabase.auth.signOut
-      setUser(null)
+      const { error } = await supabase.auth.signOut()
+      
+      if (error) throw error
+      
       toast({
         title: "Signed out",
         description: "You have been signed out successfully",
@@ -185,25 +186,43 @@ export const SupabaseProvider = ({ children }: { children: React.ReactNode }) =>
     }
   }
 
-  // Mock update profile function
+  // Real update profile function
   const updateProfile = async (updates: any) => {
     try {
       setLoading(true)
-      // In a real app, this would update the user profile in Supabase
-      setUser((prev) => ({
-        ...prev,
-        ...updates,
-        user_metadata: {
-          ...prev.user_metadata,
-          ...updates,
-        },
-      }))
-
+      
+      // Update auth metadata if username is included
+      if (updates.username) {
+        const { error: metadataError } = await supabase.auth.updateUser({
+          data: {
+            username: updates.username,
+          }
+        })
+        
+        if (metadataError) throw metadataError
+      }
+      
+      // Update profile data in the profiles table
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .update({
+          username: updates.username,
+          bio: updates.bio,
+          // Add any other fields you want to update
+        })
+        .eq('id', user.id)
+      
+      if (profileError) throw profileError
+      
+      // Refresh user data
+      const { data: userData } = await supabase.auth.getUser()
+      if (userData) setUser(userData.user)
+      
       toast({
         title: "Profile updated",
         description: "Your profile has been updated successfully",
       })
-
+      
       return { error: null }
     } catch (error: any) {
       toast({

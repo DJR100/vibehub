@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { useParams } from "next/navigation"
+import { useParams, useRouter } from "next/navigation"
 import Image from "next/image"
 import Link from "next/link"
 import { ThumbsUp, ThumbsDown, Eye, User, Calendar, Github } from "lucide-react"
@@ -10,62 +10,111 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { useSupabase } from "@/lib/supabase-provider"
 import { useToast } from "@/components/ui/use-toast"
 
-// Mock game data
-const gamesData = [
-  {
-    id: "1",
-    title: "Pixel Dungeon Crawler",
-    description:
-      "Explore procedurally generated dungeons in this roguelike adventure. Fight monsters, collect loot, and try to survive as long as possible in this challenging pixel art dungeon crawler.",
-    longDescription:
-      "Pixel Dungeon Crawler is a challenging roguelike game where you explore procedurally generated dungeons filled with dangerous monsters and valuable treasures. Each run is unique, with different layouts, enemies, and items to discover. The game features permadeath, meaning once your character dies, you'll need to start a new adventure from the beginning. With dozens of different weapons, armor pieces, and magical items to find, no two runs will ever be the same. Can you reach the bottom of the dungeon and defeat the final boss?",
-    image: "/placeholder.svg?height=600&width=800",
-    creator: "PixelWizard",
-    creatorId: "2",
-    likes: 1243,
-    dislikes: 87,
-    views: 8976,
-    tags: ["RPG", "Roguelike", "Pixel Art"],
-    releaseDate: "2023-11-15",
-    githubUrl: "https://github.com/pixelwizard/dungeon-crawler",
-    iframeUrl: "https://example.com/games/dungeon-crawler",
-  },
-  {
-    id: "2",
-    title: "Space Defender 3000",
-    description: "Defend your space station against waves of alien invaders in this fast-paced arcade shooter.",
-    longDescription:
-      "Space Defender 3000 puts you in control of the last line of defense for humanity's most important space station. Waves of increasingly difficult alien ships will attack from all directions, and it's up to you to destroy them before they can breach your defenses. Earn points for each enemy destroyed, and use those points to upgrade your weapons, shields, and special abilities between waves. The game features multiple difficulty levels, online leaderboards, and unlockable ship skins. How long can you hold out against the alien onslaught?",
-    image: "/placeholder.svg?height=600&width=800",
-    creator: "AIGameDev",
-    creatorId: "3",
-    likes: 892,
-    dislikes: 64,
-    views: 5432,
-    tags: ["Shooter", "Arcade", "Space"],
-    releaseDate: "2023-12-03",
-    githubUrl: "https://github.com/aigamedev/space-defender",
-    iframeUrl: "https://example.com/games/space-defender",
-  },
-]
-
 export default function GamePage() {
   const params = useParams()
   const { id } = params
   const [game, setGame] = useState<any>(null)
   const [loading, setLoading] = useState(true)
   const [voted, setVoted] = useState<"up" | "down" | null>(null)
-  const { user } = useSupabase()
+  const { user, supabase } = useSupabase()
   const { toast } = useToast()
+  const router = useRouter()
 
   useEffect(() => {
-    // In a real app, this would fetch from Supabase
-    const foundGame = gamesData.find((g) => g.id === id)
-    setGame(foundGame)
-    setLoading(false)
-  }, [id])
+    const fetchGame = async () => {
+      setLoading(true)
+      try {
+        const { data: gameData, error: gameError } = await supabase
+          .from('games')
+          .select(`
+            *,
+            profiles:creator_id (username, id)
+          `)
+          .eq('id', id)
+          .single()
+        
+        if (gameError || !gameData) {
+          toast({
+            title: "Error",
+            description: "Game not found",
+            variant: "destructive",
+          })
+          router.push('/explore')
+          return
+        }
+        
+        // Format the game data to match the expected structure
+        const formattedGame = {
+          ...gameData,
+          creator: gameData.profiles.username,
+          creator_id: gameData.creator_id
+        }
+        
+        setGame(formattedGame)
+        
+        // Check if user has voted on this game
+        if (user) {
+          try {
+            console.log("Checking vote status for game:", id, "user:", user.id);
+            console.log("Game ID type:", typeof id, "value:", id);
+            console.log("User ID type:", typeof user.id, "value:", user.id);
+            
+            const { data: voteData, error: voteError } = await supabase
+              .from('votes')
+              .select('vote_type')
+              .eq('game_id', id)
+              .eq('user_id', user.id)
+              .maybeSingle(); // Use maybeSingle instead of single to avoid errors if no vote exists
+            
+            if (voteError) {
+              console.error("Error fetching vote data:", voteError);
+            } else if (voteData) {
+              setVoted(voteData.vote_type as "up" | "down");
+              console.log("User has voted:", voteData.vote_type);
+            } else {
+              console.log("User has not voted yet");
+            }
+          } catch (error) {
+            console.error("Exception when checking vote status:", error);
+          }
+        }
+        
+        // Record the view
+        if (user) {
+          await recordView()
+        }
+      } catch (error) {
+        console.error("Error fetching game:", error)
+      } finally {
+        setLoading(false)
+      }
+    }
+    
+    // Function to record the view
+    const recordView = async () => {
+      try {
+        // Check if this game was viewed recently by this user
+        const lastViewedKey = `game_${id}_last_viewed`;
+        const lastViewed = localStorage.getItem(lastViewedKey);
+        const now = Date.now();
+        
+        // Only count a view if it's been more than 30 minutes since last view
+        // or if there's no record of a previous view
+        if (!lastViewed || (now - parseInt(lastViewed)) > 30 * 60 * 1000) {
+          await supabase.rpc('increment_view_count', { game_id: id });
+          localStorage.setItem(lastViewedKey, now.toString());
+        }
+      } catch (error) {
+        console.error("Error recording view:", error);
+      }
+    }
+    
+    if (id) {
+      fetchGame()
+    }
+  }, [id, user, supabase, router])
 
-  const handleVote = (type: "up" | "down") => {
+  const handleVote = async (type: "up" | "down") => {
     if (!user) {
       toast({
         title: "Authentication required",
@@ -75,43 +124,60 @@ export default function GamePage() {
       return
     }
 
-    if (voted === type) {
-      // Undo vote
-      setVoted(null)
-      if (type === "up") {
-        setGame((prev) => ({ ...prev, likes: prev.likes - 1 }))
+    try {
+      if (voted === type) {
+        // Undo vote (delete)
+        await supabase
+          .from('votes')
+          .delete()
+          .eq('game_id', id)
+          .eq('user_id', user.id)
+        
+        setVoted(null)
+      } else if (voted) {
+        // Change vote (update)
+        await supabase
+          .from('votes')
+          .update({ vote_type: type })
+          .eq('game_id', id)
+          .eq('user_id', user.id)
+        
+        setVoted(type)
       } else {
-        setGame((prev) => ({ ...prev, dislikes: prev.dislikes - 1 }))
+        // New vote (insert)
+        await supabase
+          .from('votes')
+          .insert({
+            game_id: id,
+            user_id: user.id,
+            vote_type: type
+          })
+        
+        setVoted(type)
       }
-    } else {
-      // If changing vote
-      if (voted === "up" && type === "down") {
-        setGame((prev) => ({
-          ...prev,
-          likes: prev.likes - 1,
-          dislikes: prev.dislikes + 1,
-        }))
-      } else if (voted === "down" && type === "up") {
-        setGame((prev) => ({
-          ...prev,
-          likes: prev.likes + 1,
-          dislikes: prev.dislikes - 1,
-        }))
-      } else {
-        // New vote
-        if (type === "up") {
-          setGame((prev) => ({ ...prev, likes: prev.likes + 1 }))
-        } else {
-          setGame((prev) => ({ ...prev, dislikes: prev.dislikes + 1 }))
-        }
+      
+      // Fetch updated game with new vote counts
+      const { data } = await supabase
+        .from('games')
+        .select('*')
+        .eq('id', id)
+        .single()
+      
+      if (data) {
+        setGame((prev: any) => ({ ...prev, likes: data.likes, dislikes: data.dislikes }))
       }
-      setVoted(type)
-    }
 
-    toast({
-      title: type === "up" ? "Upvoted!" : "Downvoted",
-      description: `You ${voted === type ? "removed your" : ""} ${type === "up" ? "upvote" : "downvote"} for ${game.title}`,
-    })
+      toast({
+        title: type === "up" ? "Upvoted!" : "Downvoted",
+        description: `You ${voted === type ? "removed your" : ""} ${type === "up" ? "upvote" : "downvote"} for ${game.title}`,
+      })
+    } catch (error: any) {
+      toast({
+        title: "Vote failed",
+        description: error.message,
+        variant: "destructive",
+      })
+    }
   }
 
   if (loading) {
