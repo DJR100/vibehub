@@ -3,7 +3,6 @@ export interface ProfileData {
   username: string;
   bio: string;
   avatar_url?: string;
-  avatar?: string; // For backward compatibility
   created_at?: string;
 }
 

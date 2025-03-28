@@ -39,7 +39,7 @@ export const SupabaseProvider = ({ children }: { children: React.ReactNode }) =>
       role: "creator",
       username: "GameMaster42",
       bio: "Avid gamer and pixel art enthusiast",
-      avatar: "/placeholder.svg?height=100&width=100",
+      avatar_url: "/placeholder.svg?height=100&width=100",
     },
     {
       id: "2",
@@ -48,7 +48,7 @@ export const SupabaseProvider = ({ children }: { children: React.ReactNode }) =>
       role: "creator",
       username: "PixelWizard",
       bio: "Creating AI-powered games since 2025",
-      avatar: "/placeholder.svg?height=100&width=100",
+      avatar_url: "/placeholder.svg?height=100&width=100",
     },
   ]
 

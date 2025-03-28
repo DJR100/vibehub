@@ -65,7 +65,7 @@ const mockUsers = [
     role: "creator",
     username: "GameMaster42",
     bio: "Avid gamer and pixel art enthusiast",
-    avatar: "/placeholder.svg?height=100&width=100",
+    avatar_url: "/placeholder.svg?height=100&width=100",
   },
   {
     id: "2",
@@ -74,7 +74,7 @@ const mockUsers = [
     role: "creator",
     username: "PixelWizard",
     bio: "Creating AI-powered games since 2023",
-    avatar: "/placeholder.svg?height=100&width=100",
+    avatar_url: "/placeholder.svg?height=100&width=100",
   },
   {
     id: "3",
@@ -83,7 +83,7 @@ const mockUsers = [
     role: "creator",
     username: "AIGameDev",
     bio: "AI enthusiast and game developer",
-    avatar: "/placeholder.svg?height=100&width=100",
+    avatar_url: "/placeholder.svg?height=100&width=100",
   },
 ]
 
@@ -100,9 +100,9 @@ function EditProfileDialog({ isOpen, onClose, onSave, initialData }: EditProfile
   const { supabase } = useSupabase()
   const [username, setUsername] = useState(initialData.username || "")
   const [bio, setBio] = useState(initialData.bio || "")
-  const [profileImage, setProfileImage] = useState(initialData.avatar || null)
+  const [profileImage, setProfileImage] = useState(initialData.avatar_url || null)
   const [imageFile, setImageFile] = useState<File | null>(null)
-  const [imagePreview, setImagePreview] = useState<string | null>(initialData.avatar || null)
+  const [imagePreview, setImagePreview] = useState<string | null>(initialData.avatar_url || null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const { toast } = useToast()
 
@@ -146,7 +146,7 @@ function EditProfileDialog({ isOpen, onClose, onSave, initialData }: EditProfile
 
   const handleSave = async () => {
     try {
-      let avatarUrl = initialData.avatar || "";
+      let avatarUrl = initialData.avatar_url || "";
       
       // If there's a new image file, upload it
       if (imageFile) {
@@ -189,7 +189,7 @@ function EditProfileDialog({ isOpen, onClose, onSave, initialData }: EditProfile
         ...initialData,
         username,
         bio,
-        avatar: avatarUrl,
+        avatar_url: avatarUrl,
       });
       
       onClose();
@@ -526,7 +526,7 @@ export default function ProfilePage() {
       const { error: metadataError } = await supabase.auth.updateUser({
         data: {
           username: profileData.username,
-          avatar_url: profileData.avatar,
+          avatar_url: profileData.avatar_url,
         }
       });
       
@@ -538,7 +538,7 @@ export default function ProfilePage() {
         .update({
           username: profileData.username,
           bio: profileData.bio,
-          avatar_url: profileData.avatar
+          avatar_url: profileData.avatar_url
         })
         .eq('id', user.id);
       
@@ -549,8 +549,7 @@ export default function ProfilePage() {
         ...profileUser,
         username: profileData.username,
         bio: profileData.bio,
-        avatar_url: profileData.avatar,
-        avatar: profileData.avatar
+        avatar_url: profileData.avatar_url,
       });
       
       toast({
@@ -652,7 +651,7 @@ export default function ProfilePage() {
                       id: user?.id || "",
                       username: profileUser?.username || "",
                       bio: profileUser?.bio || "",
-                      avatar: profileUser?.avatar_url || profileUser?.avatar || ""
+                      avatar_url: profileUser?.avatar_url || profileUser?.avatar || ""
                     }}
                   />
                 </>
