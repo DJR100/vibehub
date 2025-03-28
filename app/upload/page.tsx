@@ -39,6 +39,8 @@ export default function UploadPage() {
   const [isMultiplayer, setIsMultiplayer] = useState(false)
   const [imageFile, setImageFile] = useState<File | null>(null)
   const [imagePreview, setImagePreview] = useState<string | null>(null)
+  const [creatorXUrl, setCreatorXUrl] = useState("")
+  const [error, setError] = useState<string | null>(null)
 
   // Available options
   const genreOptions = [
@@ -202,6 +204,16 @@ export default function UploadPage() {
       return;
     }
 
+    if (!creatorXUrl) {
+      setError("Creator's X URL is required");
+      return;
+    }
+
+    if (!creatorXUrl.includes('x.com/') && !creatorXUrl.includes('twitter.com/')) {
+      setError("Please enter a valid X (Twitter) URL");
+      return;
+    }
+
     setLoading(true);
 
     try {
@@ -252,7 +264,8 @@ export default function UploadPage() {
         likes: 0,
         dislikes: 0,
         views: 0,
-        favorites_count: 0
+        favorites_count: 0,
+        creator_x_url: creatorXUrl
       });
 
       const { data: game, error: insertError } = await supabase
@@ -273,7 +286,8 @@ export default function UploadPage() {
           likes: 0,
           dislikes: 0,
           views: 0,
-          favorites_count: 0
+          favorites_count: 0,
+          creator_x_url: creatorXUrl
         })
         .select()
         .single();
@@ -602,6 +616,25 @@ export default function UploadPage() {
                 className="h-4 w-4 rounded border-gray-600 bg-gray-800 text-primary focus:ring-primary"
               />
               <Label htmlFor="multiplayer">This is a multiplayer game</Label>
+            </div>
+
+            {/* Creator's X URL */}
+            <div className="mb-4">
+              <Label htmlFor="creatorXUrl" className="block text-sm font-medium text-gray-200 mb-1">
+                Creator's X URL <span className="text-red-500">*</span>
+              </Label>
+              <Input
+                id="creatorXUrl"
+                type="text"
+                placeholder="https://x.com/username"
+                value={creatorXUrl}
+                onChange={(e) => setCreatorXUrl(e.target.value)}
+                className="bg-gray-800 border-gray-700 text-white"
+                required
+              />
+              <p className="text-xs text-gray-400 mt-1">
+                Enter the X account URL of the original creator (even if you're uploading on their behalf)
+              </p>
             </div>
 
             {/* Submit Button */}

@@ -211,8 +211,12 @@ type Game = {
   likes: number;
   play_count: number;
   creator: string;
+  creator_x_url?: string;
   tags: string[];
   favorites_count?: number;
+  genre?: string;
+  multiplayer?: boolean;
+  aiTool?: string;
 }
 
 export default function ExplorePage() {
@@ -477,9 +481,25 @@ export default function ExplorePage() {
                   <div>
                     <h3 className="pixel-text mb-2 text-lg font-bold">{game.title}</h3>
                     <div className="flex items-center justify-between">
-                      <div className="flex items-center space-x-1 text-xs text-white">
-                        <User className="h-3 w-3 text-primary" />
-                        <span>{game.creator}</span>
+                      <div className="flex items-center space-x-2">
+                        <div className="flex items-center space-x-1 text-xs text-white">
+                          <User className="h-3 w-3 text-primary" />
+                          <span>{game.creator}</span>
+                        </div>
+                        {game.creator_x_url && (
+                          <a 
+                            href={game.creator_x_url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex items-center space-x-1 text-xs text-white hover:text-primary"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="currentColor" className="h-3 w-3 text-primary">
+                              <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+                            </svg>
+                            <span>{extractXHandle(game.creator_x_url)}</span>
+                          </a>
+                        )}
                       </div>
                       <div className="flex space-x-3">
                         <div className="stats-item">
@@ -488,7 +508,7 @@ export default function ExplorePage() {
                         </div>
                         <div className="stats-item">
                           <Eye className="h-3 w-3 text-primary" />
-                          <span className="text-white">{game.play_count?.toLocaleString() || 0} plays</span>
+                          <span className="text-white">{game.play_count?.toLocaleString() || 0}</span>
                         </div>
                         <div className="stats-item">
                           <Bookmark className="h-3 w-3 text-primary" />
@@ -513,5 +533,12 @@ export default function ExplorePage() {
       </div>
     </div>
   )
+}
+
+function extractXHandle(url: string) {
+  if (!url) return "";
+  // Extract username from X URL (supports both x.com and twitter.com)
+  const match = url.match(/(?:x\.com|twitter\.com)\/([^\/\?]+)/);
+  return match ? `@${match[1]}` : "X";
 }
 

@@ -673,8 +673,8 @@ export default function ProfilePage() {
                   <span className="text-white">Games Created</span>
                   <span className="font-medium text-white">{profileStats.gamesCreated}</span>
                 </div>
-                <div className="flex items-center justify-between">
-                  <span className="text-white">Total Plays</span>
+                <div className="flex items-center justify-between text-sm">
+                  <span className="text-white">Plays</span>
                   <span className="font-medium text-white">{profileStats.totalPlays.toLocaleString()}</span>
                 </div>
               </div>
@@ -746,7 +746,7 @@ export default function ProfilePage() {
                             </div>
                             <div className="stats-item">
                               <Eye className="h-3 w-3 text-primary" />
-                              <span>{(game.play_count || 0).toLocaleString()} plays</span>
+                              <span>{(game.play_count || 0).toLocaleString()}</span>
                             </div>
                             <div className="stats-item">
                               <Bookmark className="h-3 w-3 text-primary" />
@@ -816,7 +816,7 @@ export default function ProfilePage() {
                               </div>
                               <div className="stats-item">
                                 <Eye className="h-3 w-3 text-primary" />
-                                <span>{(game.play_count || 0).toLocaleString()} plays</span>
+                                <span>{(game.play_count || 0).toLocaleString()}</span>
                               </div>
                               <div className="stats-item">
                                 <Bookmark className="h-3 w-3 text-primary" />

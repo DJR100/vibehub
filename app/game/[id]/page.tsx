@@ -368,32 +368,46 @@ export default function GamePage() {
 
               <p className="text-white">{game.description}</p>
 
-              <div className="flex items-center space-x-4">
+              <div className="flex flex-wrap items-center gap-4">
                 <Link
                   href={`/profile/${game.creatorId}`}
-                  className="flex items-center space-x-2 text-sm text-white hover:underline"
+                  className="flex items-center space-x-2 text-sm text-white hover:text-primary"
                 >
                   <User className="h-4 w-4 text-primary" />
                   <span>{game.creator}</span>
                 </Link>
+
+                {game.creator_x_url && (
+                  <a
+                    href={game.creator_x_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center space-x-2 text-sm text-white hover:text-primary"
+                  >
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" className="h-4 w-4 text-primary">
+                      <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+                    </svg>
+                    <span>{extractXHandle(game.creator_x_url)}</span>
+                  </a>
+                )}
+                
+                {game.github_url && (
+                  <a
+                    href={game.github_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center space-x-2 text-sm text-white hover:text-primary"
+                  >
+                    <Github className="h-4 w-4 text-primary" />
+                    <span>View Source</span>
+                  </a>
+                )}
                 
                 <div className="flex items-center space-x-2 text-sm text-white">
                   <Calendar className="h-4 w-4 text-primary" />
                   <span>{new Date(game.created_at).toLocaleDateString()}</span>
                 </div>
               </div>
-
-              {game.github_url && (
-                <Link
-                  href={game.github_url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="flex items-center space-x-2 text-sm text-white hover:text-primary"
-                >
-                  <Github className="h-4 w-4 text-primary" />
-                  <span>View Source</span>
-                </Link>
-              )}
 
               <div className="flex flex-wrap items-center gap-4 text-sm">
                 <div className="flex items-center gap-2">
@@ -550,6 +564,23 @@ export default function GamePage() {
                       </Link>
                     </div>
                   )}
+                  
+                  {game.creator_x_url && (
+                    <div className="flex flex-col space-y-1">
+                      <span className="text-sm font-medium text-gray-400">Creator's X</span>
+                      <Link 
+                        href={game.creator_x_url} 
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-center text-primary hover:underline"
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="currentColor" className="mr-2 h-4 w-4">
+                          <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+                        </svg>
+                        {extractXHandle(game.creator_x_url)}
+                      </Link>
+                    </div>
+                  )}
                 </div>
               </div>
             </TabsContent>
@@ -558,5 +589,11 @@ export default function GamePage() {
       </div>
     </div>
   )
+}
+
+function extractXHandle(url: string) {
+  if (!url) return "";
+  const match = url.match(/(?:x\.com|twitter\.com)\/([^\/\?]+)/);
+  return match ? `@${match[1]}` : "X";
 }
 

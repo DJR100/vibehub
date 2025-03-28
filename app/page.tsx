@@ -115,7 +115,7 @@ export default function Home() {
                         </div>
                         <div className="stats-item">
                           <Eye className="h-3 w-3 text-primary" />
-                          <span>{game.play_count?.toLocaleString() || 0} plays</span>
+                          <span>{game.play_count?.toLocaleString() || 0}</span>
                         </div>
                         <div className="stats-item">
                           <Bookmark className="h-3 w-3 text-primary" />
