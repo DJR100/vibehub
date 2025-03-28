@@ -364,7 +364,7 @@ export default function ProfilePage() {
           
           if (!userGamesError && userGamesData) {
             // For each game, fetch play count
-            const gamesWithPlayCounts = await Promise.all(userGamesData.map(async (game) => {
+            const gamesWithPlayCounts = await Promise.all(userGamesData.map(async (game: { id: string }) => {
               const { count: playCount, error: playCountError } = await supabase
                 .from('play_history')
                 .select('*', { count: 'exact' })

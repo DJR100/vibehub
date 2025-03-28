@@ -3,6 +3,7 @@ import Image from "next/image"
 import { Button } from "@/components/ui/button"
 import { ThumbsUp, Eye, User, Bookmark } from "lucide-react"
 import TrendingGames from "@/components/trending-games"
+import SnakeAnimation from './components/SnakeAnimation'
 
 // Featured games data
 const featuredGames = [
@@ -51,23 +52,18 @@ export default function Home() {
   return (
     <div className="flex flex-col bg-black">
       {/* Hero Section */}
-      <section className="relative flex min-h-[70vh] items-center justify-center overflow-hidden">
-        <div className="absolute inset-0 z-0">
-          <div className="absolute inset-0 bg-gradient-to-b from-black/70 via-black/80 to-black"></div>
-          <Image
-            src="/placeholder.svg?height=1080&width=1920"
-            alt="Hero background"
-            fill
-            className="object-cover"
-            priority
-          />
+      <section className="relative flex min-h-[70vh] items-center justify-center overflow-hidden bg-black">
+        <div className="absolute inset-0">
+          <SnakeAnimation gridSize={15} speed={120} />
         </div>
 
         <div className="container relative z-10 mx-auto px-4 text-center">
           <h1 className="pixel-text mb-6 text-4xl font-bold leading-tight md:text-5xl lg:text-6xl">
-            <span className="text-primary">The Home for AI-built Web Games</span>
+            <span className="text-primary block">The Home for</span>
+            <span className="text-primary block">Vibe-Coded</span>
+            <span className="text-primary block">Web Games</span>
           </h1>
-          <p className="mx-auto mb-8 max-w-2xl text-lg text-gray-300">
+          <p className="mx-auto mb-8 max-w-2xl text-lg text-white">
             Discover, play, and share games created with AI tools. Join the vibe-coded gaming revolution on VibeHub.
           </p>
           <div className="flex flex-col items-center justify-center space-y-4 sm:flex-row sm:space-x-4 sm:space-y-0">
