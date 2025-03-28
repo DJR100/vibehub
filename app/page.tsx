@@ -1,9 +1,12 @@
+"use client"
+
 import Link from "next/link"
 import Image from "next/image"
 import { Button } from "@/components/ui/button"
 import { ThumbsUp, Eye, User, Bookmark } from "lucide-react"
 import TrendingGames from "@/components/trending-games"
 import SnakeAnimation from './components/SnakeAnimation'
+import { useSupabase } from "@/lib/supabase-provider"
 
 // Featured games data
 const featuredGames = [
@@ -49,6 +52,8 @@ type Game = {
 }
 
 export default function Home() {
+  const { user } = useSupabase()
+  
   return (
     <div className="flex flex-col bg-black">
       {/* Hero Section */}
@@ -57,13 +62,13 @@ export default function Home() {
           <SnakeAnimation gridSize={15} speed={120} />
         </div>
 
-        <div className="container relative z-10 mx-auto px-4 text-center">
-          <h1 className="pixel-text mb-6 text-4xl font-bold leading-tight md:text-5xl lg:text-6xl">
+        <div className="container relative z-10 mx-auto px-4 text-center max-w-4xl">
+          <h1 className="pixel-text mb-8 text-4xl font-bold leading-tight md:text-5xl lg:text-6xl">
             <span className="text-primary block">The Home for</span>
             <span className="text-primary block">Vibe-Coded</span>
             <span className="text-primary block">Web Games</span>
           </h1>
-          <p className="mx-auto mb-8 max-w-2xl text-lg text-white">
+          <p className="mx-auto mb-10 max-w-2xl text-lg text-white">
             Discover, play, and share games created with AI tools. Join the vibe-coded gaming revolution on VibeHub.
           </p>
           <div className="flex flex-col items-center justify-center space-y-4 sm:flex-row sm:space-x-4 sm:space-y-0">
@@ -75,9 +80,9 @@ export default function Home() {
       </section>
 
       {/* Featured Games */}
-      <section className="py-16 bg-black">
+      <section className="py-20 bg-black">
         <div className="container mx-auto px-4">
-          <h2 className="pixel-text mb-8 text-center text-3xl font-bold text-primary">Featured Games</h2>
+          <h2 className="pixel-text mb-10 text-center text-3xl font-bold text-primary">Featured Games</h2>
           <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
             {featuredGames.map((game: Game) => (
               <Link key={game.id} href={`/game/${game.id}`} className="game-card">
@@ -127,16 +132,16 @@ export default function Home() {
       </section>
 
       {/* Trending Games */}
-      <section className="bg-black py-16">
+      <section className="bg-black py-20">
         <div className="container mx-auto px-4">
-          <h2 className="pixel-text mb-8 text-center text-3xl font-bold text-primary">Trending Now</h2>
+          <h2 className="pixel-text mb-10 text-center text-3xl font-bold text-primary">Trending Now</h2>
           <TrendingGames />
         </div>
       </section>
 
       {/* Call to Action */}
-      <section className="bg-black py-16">
-        <div className="container mx-auto px-4 text-center">
+      <section className="py-20 text-center bg-black">
+        <div className="container mx-auto px-4 max-w-4xl">
           <h2 className="pixel-text mb-6 text-3xl font-bold">
             Ready to <span className="text-primary">Share</span> Your Game?
           </h2>
@@ -144,8 +149,10 @@ export default function Home() {
             Upload your AI-built game and join a community of creators and players passionate about the future of gaming
             on VibeHub.
           </p>
-          <Link href="/upload">
-            <Button className="pixel-button text-lg">Upload Your Game</Button>
+          <Link href={user ? "/upload" : "/login"}>
+            <Button className="pixel-button text-lg">
+              {user ? "Upload Your Game" : "Sign In to Upload"}
+            </Button>
           </Link>
         </div>
       </section>

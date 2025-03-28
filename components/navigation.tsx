@@ -3,7 +3,7 @@
 import { useState } from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { Menu, X, User, LogOut, Upload } from "lucide-react"
+import { Menu, X, User, LogOut, Upload, MessageSquare } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useSupabase } from "@/lib/supabase-provider"
 import {
@@ -34,7 +34,6 @@ export default function Navigation() {
     { name: "Home", href: "/" },
     { name: "Explore", href: "/explore" },
     { name: "About", href: "/about" },
-    { name: "Feedback", href: "/feedback" },
   ]
 
   return (
@@ -42,15 +41,17 @@ export default function Navigation() {
       <div className="container mx-auto px-4">
         <div className="flex h-16 items-center justify-between">
           {/* Logo */}
-          <Link href="/" className="flex items-center space-x-2">
-            <VibeHubLogo />
-            <span className="pixel-text text-xl font-bold text-primary">
-              Vibe<span className="text-secondary">Hub</span>
-            </span>
-          </Link>
+          <div className="flex-1 flex justify-start">
+            <Link href="/" className="flex items-center space-x-2">
+              <VibeHubLogo />
+              <span className="pixel-text text-xl font-bold text-primary">
+                Vibe<span className="text-secondary">Hub</span>
+              </span>
+            </Link>
+          </div>
 
-          {/* Desktop Navigation */}
-          <div className="hidden md:flex md:items-center md:space-x-8">
+          {/* Desktop Navigation - Centered */}
+          <div className="hidden md:flex md:items-center md:justify-center md:space-x-10 flex-1">
             {navItems.map((item) => (
               <Link
                 key={item.name}
@@ -62,10 +63,20 @@ export default function Navigation() {
                 {item.name}
               </Link>
             ))}
+            {user && (
+              <Link
+                href="/upload"
+                className={`pixel-text text-sm transition-colors hover:text-primary whitespace-nowrap ${
+                  pathname === "/upload" ? "text-primary" : "text-gray-300"
+                }`}
+              >
+                Upload Game
+              </Link>
+            )}
           </div>
 
           {/* User Menu / Auth Buttons */}
-          <div className="hidden md:flex md:items-center md:space-x-4">
+          <div className="hidden md:flex md:items-center md:justify-end flex-1">
             {user ? (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
@@ -94,9 +105,9 @@ export default function Navigation() {
                     </Link>
                   </DropdownMenuItem>
                   <DropdownMenuItem asChild>
-                    <Link href="/upload">
-                      <Upload className="mr-2 h-4 w-4" />
-                      <span>Upload Game</span>
+                    <Link href="/feedback">
+                      <MessageSquare className="mr-2 h-4 w-4" />
+                      <span>Feedback</span>
                     </Link>
                   </DropdownMenuItem>
                   <DropdownMenuSeparator />
@@ -133,7 +144,7 @@ export default function Navigation() {
       {/* Mobile Menu */}
       {isOpen && (
         <div className="md:hidden">
-          <div className="space-y-1 px-2 pb-3 pt-2">
+          <div className="space-y-1 px-2 pb-3 pt-2 text-center">
             {/* Navigation Links */}
             {navItems.map((item) => (
               <Link
@@ -149,6 +160,21 @@ export default function Navigation() {
                 {item.name}
               </Link>
             ))}
+            
+            {/* Conditionally show Upload Game only when logged in */}
+            {user && (
+              <Link
+                href="/upload"
+                className={`block rounded-md px-3 py-2 text-base font-medium whitespace-nowrap ${
+                  pathname === "/upload"
+                    ? "bg-gray-900 text-primary" 
+                    : "text-gray-300 hover:bg-gray-700 hover:text-white"
+                }`}
+                onClick={closeMenu}
+              >
+                Upload Game
+              </Link>
+            )}
 
             {/* Auth Links */}
             {user ? (
@@ -162,12 +188,12 @@ export default function Navigation() {
                   Profile
                 </Link>
                 <Link
-                  href="/upload"
+                  href="/feedback"
                   className="block rounded-md px-3 py-2 text-base font-medium text-gray-300 hover:bg-gray-700 hover:text-white"
                   onClick={closeMenu}
                 >
-                  <Upload className="mr-2 inline-block h-4 w-4" />
-                  Upload Game
+                  <MessageSquare className="mr-2 inline-block h-4 w-4" />
+                  Feedback
                 </Link>
                 <button
                   onClick={() => {
