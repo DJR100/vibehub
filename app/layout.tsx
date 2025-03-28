@@ -12,9 +12,6 @@ const inter = Inter({ subsets: ["latin"] })
 export const metadata: Metadata = {
   title: "VibeHub - The Home for AI-built Web Games",
   description: "Discover and play the best AI-built web games",
-  icons: {
-    icon: '/favicon.ico',
-  },
   generator: 'v0.dev'
 }
 
