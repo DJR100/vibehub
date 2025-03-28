@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback } from "react"
 import { useRouter } from "next/navigation"
 import { useSupabase } from "@/lib/supabase-provider"
 import { Button } from "@/components/ui/button"
@@ -19,6 +19,25 @@ import {
 } from "@/components/ui/dropdown-menu"
 import Image from "next/image"
 import { Badge } from "@/components/ui/badge"
+import Papa from 'papaparse'
+import fs from 'fs/promises'
+import path from 'path'
+
+// Add this interface before the component
+interface GameCsvRow {
+  title: string;
+  description: string;
+  long_description?: string;
+  how_to_play?: string;
+  image?: string;
+  iframe_url: string;
+  github_url?: string;
+  tags?: string;
+  genres: string;
+  ai_tools: string;
+  is_multiplayer?: string;
+  creator_x_url: string;
+}
 
 export default function UploadPage() {
   const { user, supabase } = useSupabase()
@@ -41,6 +60,13 @@ export default function UploadPage() {
   const [imagePreview, setImagePreview] = useState<string | null>(null)
   const [creatorXUrl, setCreatorXUrl] = useState("")
   const [error, setError] = useState<string | null>(null)
+  const [bulkUploadResults, setBulkUploadResults] = useState<{
+    successful: number;
+    failed: number;
+    errors: string[];
+  }>({ successful: 0, failed: 0, errors: [] });
+  const [isBulkUploading, setIsBulkUploading] = useState(false);
+  const [csvFile, setCsvFile] = useState<File | null>(null);
 
   // Available options
   const genreOptions = [
@@ -330,6 +356,144 @@ export default function UploadPage() {
       reader.readAsDataURL(file)
     }
   }
+
+  const handleCsvFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files.length > 0) {
+      setCsvFile(e.target.files[0]);
+    }
+  };
+
+  const handleBulkUpload = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!user) {
+      toast({
+        title: "Authentication Error",
+        description: "You must be logged in to upload games",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    if (!csvFile) {
+      toast({
+        title: "No File Selected",
+        description: "Please select a CSV file to upload",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    setIsBulkUploading(true);
+    const results = { successful: 0, failed: 0, errors: [] as string[] };
+    
+    try {
+      const fileText = await csvFile.text();
+      const parseResult = Papa.parse<GameCsvRow>(fileText, {
+        header: true,
+        skipEmptyLines: true,
+      });
+      
+      const data = parseResult.data;
+      const errors = parseResult.errors;
+      
+      if (errors.length > 0) {
+        toast({
+          title: "CSV Parse Error",
+          description: "There were errors parsing your CSV file",
+          variant: "destructive",
+        });
+        setIsBulkUploading(false);
+        return;
+      }
+      
+      // Process each row in the CSV
+      for (const row of data) {
+        try {
+          // Skip empty rows
+          if (!row.title) {
+            continue;
+          }
+          
+          // Parse multi-value fields
+          const parsedTags = row.tags ? row.tags.split(',').map((t: string) => t.trim()) : [];
+          const parsedGenres = row.genres ? row.genres.split(',').map((g: string) => g.trim()) : [];
+          const parsedAiTools = row.ai_tools ? row.ai_tools.split(',').map((a: string) => a.trim()) : [];
+          
+          // Ensure iframe_url is a proper URL
+          let formattedIframeUrl = row.iframe_url || "";
+          if (formattedIframeUrl && !formattedIframeUrl.startsWith('http://') && !formattedIframeUrl.startsWith('https://')) {
+            formattedIframeUrl = `https://${formattedIframeUrl}`;
+          }
+          
+          const gameData = {
+            title: row.title,
+            description: row.description || "",
+            long_description: row.long_description || "",
+            how_to_play: row.how_to_play || "",
+            image: row.image || "/placeholder.svg",
+            creator_id: user.id,
+            iframe_url: formattedIframeUrl,
+            github_url: row.github_url || "",
+            tags: parsedTags,
+            genres: parsedGenres,
+            ai_tools: parsedAiTools,
+            is_multiplayer: row.is_multiplayer === 'true',
+            creator_x_url: row.creator_x_url || "",
+            likes: 0,
+            dislikes: 0,
+            views: 0,
+            favorites_count: 0
+          };
+          
+          // Validate required fields
+          if (!gameData.title || !gameData.description || !gameData.iframe_url || 
+              !gameData.genres.length || !gameData.ai_tools.length || !gameData.creator_x_url) {
+            results.failed++;
+            results.errors.push(`Row for "${gameData.title || 'Unnamed game'}": Missing required fields`);
+            continue;
+          }
+          
+          // Validate URL format for creator's X URL
+          if (!gameData.creator_x_url.includes('x.com/') && !gameData.creator_x_url.includes('twitter.com/')) {
+            results.failed++;
+            results.errors.push(`Row for "${gameData.title}": Invalid X URL format`);
+            continue;
+          }
+          
+          // Insert into Supabase
+          const { error } = await supabase.from('games').insert(gameData);
+          
+          if (error) {
+            results.failed++;
+            results.errors.push(`Failed to upload "${gameData.title}": ${error.message}`);
+          } else {
+            results.successful++;
+          }
+        } catch (rowError) {
+          results.failed++;
+          results.errors.push(`Error processing row: ${(rowError as Error).message}`);
+        }
+      }
+      
+      toast({
+        title: "Bulk Upload Results",
+        description: `Successfully uploaded ${results.successful} games. Failed: ${results.failed}.`,
+        variant: results.failed > 0 ? "destructive" : "default",
+      });
+      
+      setBulkUploadResults(results);
+    } catch (error) {
+      console.error("Bulk upload error:", error);
+      toast({
+        title: "Bulk Upload Error",
+        description: "An unexpected error occurred during bulk upload.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsBulkUploading(false);
+    }
+  };
 
   if (!user) {
     return null // Handled by the useEffect redirect
@@ -651,6 +815,69 @@ export default function UploadPage() {
               </Button>
             </div>
           </form>
+        </div>
+
+        <div className="mt-10 rounded-lg border border-gray-800 bg-card p-6">
+          <h2 className="pixel-text mb-4 text-2xl font-bold">Bulk Upload Games</h2>
+          <p className="mb-4 text-sm text-gray-400">
+            Upload multiple games at once using a CSV file.
+          </p>
+          
+          <form onSubmit={handleBulkUpload} className="space-y-4">
+            <div className="flex flex-col space-y-2">
+              <Label htmlFor="csvFile">Select CSV File</Label>
+              <Input
+                id="csvFile"
+                type="file"
+                accept=".csv"
+                onChange={handleCsvFileChange}
+                className="bg-gray-800 border-gray-700 text-white"
+              />
+              <p className="text-xs text-gray-400">
+                Required columns: title, description, iframe_url, genres, ai_tools, creator_x_url
+              </p>
+            </div>
+            
+            <Button 
+              type="submit" 
+              className="pixel-button w-full" 
+              disabled={isBulkUploading || !csvFile}
+            >
+              {isBulkUploading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Uploading...
+                </>
+              ) : (
+                "Start Bulk Upload"
+              )}
+            </Button>
+          </form>
+          
+          {isBulkUploading && (
+            <div className="mt-4 bg-gray-900 p-4 rounded-md">
+              <p className="text-center">Processing CSV file, please wait...</p>
+            </div>
+          )}
+          
+          {bulkUploadResults.successful > 0 && (
+            <div className="mt-4 bg-green-900/30 p-4 rounded-md">
+              <p>Successfully uploaded {bulkUploadResults.successful} games</p>
+            </div>
+          )}
+          
+          {bulkUploadResults.errors.length > 0 && (
+            <div className="mt-4 bg-red-900/30 p-4 rounded-md">
+              <h3 className="font-semibold mb-2">Errors ({bulkUploadResults.failed}):</h3>
+              <div className="max-h-60 overflow-y-auto">
+                <ul className="list-disc pl-5 text-sm text-red-300 space-y-1">
+                  {bulkUploadResults.errors.map((error, index) => (
+                    <li key={index}>{error}</li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>
