@@ -10,12 +10,16 @@ import { SupabaseProvider } from "@/lib/supabase-provider"
 const inter = Inter({ subsets: ["latin"] })
 
 export const metadata: Metadata = {
-  title: "VibeHub - The Home for AI-built Web Games",
-  description: "Discover and play the best AI-built web games",
+  title: "VibeHub",
+  description: "Home for AI-built web games",
   icons: {
-    icon: '/favicon.ico',
-    shortcut: '/favicon.ico',
-    apple: '/favicon.ico',
+    icon: '/Favicon.ico',
+    shortcut: '/Favicon.ico',
+    apple: '/Favicon.ico',
+    other: {
+      rel: 'apple-touch-icon',
+      url: '/Favicon.ico',
+    },
   },
   generator: 'v0.dev'
 }
