@@ -65,18 +65,18 @@ export default function Home() {
   return (
     <div className="flex flex-col bg-black">
       {/* Hero Section */}
-      <section className="relative flex min-h-[70vh] items-center justify-center overflow-hidden bg-black">
+      <section className="relative flex min-h-[60vh] items-center justify-center overflow-hidden bg-black pb-8">
         <div className="absolute inset-0">
           <SnakeAnimation gridSize={15} speed={120} />
         </div>
 
         <div className="container relative z-10 mx-auto px-4 text-center max-w-4xl">
-          <h1 className="pixel-text mb-8 text-4xl font-bold leading-tight md:text-5xl lg:text-6xl">
+          <h1 className="pixel-text mb-6 text-4xl font-bold leading-tight md:text-5xl lg:text-6xl">
             <span className="text-primary block">The Home for</span>
             <span className="text-primary block">Vibe-Coded</span>
             <span className="text-primary block">Web Games</span>
           </h1>
-          <p className="mx-auto mb-10 max-w-2xl text-lg text-white">
+          <p className="mx-auto mb-8 max-w-2xl text-lg text-white">
             Discover, play, and share games created with AI tools. Join the vibe-coded gaming revolution on VibeHub.
           </p>
           <div className="flex flex-col items-center justify-center space-y-4 sm:flex-row sm:space-x-4 sm:space-y-0">
@@ -88,7 +88,7 @@ export default function Home() {
       </section>
 
       {/* Featured Games */}
-      <section className="py-20 bg-black">
+      <section className="py-12 bg-black">
         <div className="container mx-auto px-4">
           <h2 className="pixel-text mb-10 text-center text-3xl font-bold text-primary">Featured Games</h2>
           

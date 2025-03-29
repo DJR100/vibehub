@@ -643,6 +643,14 @@ export default function ProfilePage() {
                   className="h-full w-full object-cover"
                 />
               </div>
+              
+              <h2 className="pixel-text text-primary mb-2 text-xl font-bold">
+                {displayName}
+              </h2>
+              
+              <p className="text-gray-300 mb-4 text-sm">
+                {displayBio}
+              </p>
 
               {isOwnProfile && (
                 <>
