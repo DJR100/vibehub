@@ -1,82 +1,67 @@
 "use client"
 
+import { useState, useEffect } from "react"
 import Link from "next/link"
 import Image from "next/image"
 import { ThumbsUp, Eye, User, Bookmark } from "lucide-react"
+import { useSupabase } from "@/lib/supabase-provider"
 
-type Game = {
-  id: number;
+interface Game {
+  id: string;
   title: string;
-  image: string;
-  likes: number;
-  play_count: number;
+  image?: string;
   creator: string;
   creator_x_url?: string;
-  tags: string[];
+  tags?: string[];
+  likes?: number;
+  play_count?: number;
   favorites_count?: number;
 }
 
-const trendingGames = [
-  {
-    id: 4,
-    title: "Zombie Survival",
-    image: "/placeholder.svg?height=400&width=600",
-    creator: "SurvivalGuru",
-    likes: 543,
-    play_count: 3210,
-    tags: ["Survival", "Horror", "Action"],
-  },
-  {
-    id: 5,
-    title: "Puzzle Master",
-    image: "/placeholder.svg?height=400&width=600",
-    creator: "BrainTeaser",
-    likes: 421,
-    play_count: 2876,
-    tags: ["Puzzle", "Logic", "Casual"],
-  },
-  {
-    id: 6,
-    title: "Fantasy Quest",
-    image: "/placeholder.svg?height=400&width=600",
-    creator: "RPGLover",
-    likes: 387,
-    play_count: 2543,
-    tags: ["RPG", "Fantasy", "Adventure"],
-  },
-  {
-    id: 7,
-    title: "Retro Platformer",
-    image: "/placeholder.svg?height=400&width=600",
-    creator: "OldSchoolDev",
-    likes: 356,
-    play_count: 2321,
-    tags: ["Platformer", "Retro", "2D"],
-  },
-  {
-    id: 8,
-    title: "Strategy Empire",
-    image: "/placeholder.svg?height=400&width=600",
-    creator: "MindMaster",
-    likes: 312,
-    play_count: 1987,
-    tags: ["Strategy", "Simulation", "Building"],
-  },
-  {
-    id: 9,
-    title: "Card Battler",
-    image: "/placeholder.svg?height=400&width=600",
-    creator: "DeckBuilder",
-    likes: 298,
-    play_count: 1765,
-    tags: ["Card Game", "Strategy", "PvP"],
-  },
-]
-
 export default function TrendingGames() {
+  const [trendingGames, setTrendingGames] = useState<Game[]>([])
+  const [loading, setLoading] = useState(true)
+  const { supabase } = useSupabase()
+
+  useEffect(() => {
+    async function fetchGames() {
+      try {
+        setLoading(true)
+        // Fetch all games from your database
+        const { data, error } = await supabase
+          .from('games')
+          .select('*')
+        
+        if (error) throw error
+        
+        // Randomly select 6 games if there are enough
+        if (data && data.length > 6) {
+          // Shuffle array
+          const shuffled = [...data].sort(() => 0.5 - Math.random())
+          // Get first 6 items
+          setTrendingGames(shuffled.slice(0, 6))
+        } else {
+          // Use all games if less than 6
+          setTrendingGames(data || [])
+        }
+      } catch (error) {
+        console.error("Error fetching trending games:", error)
+        setTrendingGames([])
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchGames()
+  }, [supabase])
+
+  if (loading) {
+    return <div className="text-center py-12">Loading trending games...</div>
+  }
+
   return (
     <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-      {trendingGames.map((game: Game) => (
+      {trendingGames.map((game) => (
         <Link key={game.id} href={`/game/${game.id}`} className="game-card">
           <Image
             src={game.image || "/placeholder.svg"}
@@ -86,48 +71,38 @@ export default function TrendingGames() {
           />
           <div className="game-card-content">
             <div className="flex flex-wrap gap-2">
-              {game.tags.slice(0, 2).map((tag) => (
+              {game.tags && game.tags.slice(0, 2).map((tag) => (
                 <span key={tag} className="tag">
                   {tag}
                 </span>
               ))}
-              {game.tags.length > 2 && <span className="tag">+{game.tags.length - 2}</span>}
+              {game.tags && game.tags.length > 2 && <span className="tag">+{game.tags.length - 2}</span>}
             </div>
             <div>
               <h3 className="pixel-text mb-2 text-lg font-bold text-white">{game.title}</h3>
               <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-2">
-                  <div className="flex items-center space-x-1 text-xs text-white">
-                    <User className="h-3 w-3 text-primary" />
-                    <span>{game.creator}</span>
-                  </div>
+                <div className="flex items-center space-x-1 text-xs text-white">
                   {game.creator_x_url && (
-                    <a 
-                      href={game.creator_x_url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="flex items-center space-x-1 text-xs text-white hover:text-primary"
-                      onClick={(e) => e.stopPropagation()}
-                    >
+                    <div className="flex items-center space-x-1">
                       <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="currentColor" className="h-3 w-3 text-primary">
                         <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
                       </svg>
                       <span>{extractXHandle(game.creator_x_url)}</span>
-                    </a>
+                    </div>
                   )}
                 </div>
                 <div className="flex space-x-3">
                   <div className="stats-item">
                     <ThumbsUp className="h-3 w-3 text-primary" />
-                    <span>{game.likes.toLocaleString()}</span>
+                    <span>{(game.likes || 0).toLocaleString()}</span>
                   </div>
                   <div className="stats-item">
                     <Eye className="h-3 w-3 text-primary" />
-                    <span>{game.play_count?.toLocaleString() || 0}</span>
+                    <span>{(game.play_count || 0).toLocaleString()}</span>
                   </div>
                   <div className="stats-item">
                     <Bookmark className="h-3 w-3 text-primary" />
-                    <span>{game.favorites_count?.toLocaleString() || 0}</span>
+                    <span>{(game.favorites_count || 0).toLocaleString()}</span>
                   </div>
                 </div>
               </div>
@@ -141,7 +116,6 @@ export default function TrendingGames() {
 
 function extractXHandle(url: string) {
   if (!url) return "";
-  // Extract username from X URL (supports both x.com and twitter.com)
   const match = url.match(/(?:x\.com|twitter\.com)\/([^\/\?]+)/);
   return match ? `@${match[1]}` : "X";
 }

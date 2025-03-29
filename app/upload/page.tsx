@@ -23,7 +23,8 @@ import Papa from 'papaparse'
 import fs from 'fs/promises'
 import path from 'path'
 
-// Add this interface before the component
+// Comment out the GameCsvRow interface
+/*
 interface GameCsvRow {
   title: string;
   description: string;
@@ -38,6 +39,7 @@ interface GameCsvRow {
   is_multiplayer?: string;
   creator_x_url: string;
 }
+*/
 
 export default function UploadPage() {
   const { user, supabase } = useSupabase()
@@ -60,6 +62,9 @@ export default function UploadPage() {
   const [imagePreview, setImagePreview] = useState<string | null>(null)
   const [creatorXUrl, setCreatorXUrl] = useState("")
   const [error, setError] = useState<string | null>(null)
+  
+  // Comment out bulk upload state
+  /*
   const [bulkUploadResults, setBulkUploadResults] = useState<{
     successful: number;
     failed: number;
@@ -67,6 +72,7 @@ export default function UploadPage() {
   }>({ successful: 0, failed: 0, errors: [] });
   const [isBulkUploading, setIsBulkUploading] = useState(false);
   const [csvFile, setCsvFile] = useState<File | null>(null);
+  */
 
   // Available options
   const genreOptions = [
@@ -357,143 +363,80 @@ export default function UploadPage() {
     }
   }
 
+  // Comment out bulk upload related functions
+  /*
   const handleCsvFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files.length > 0) {
+    if (e.target.files && e.target.files[0]) {
       setCsvFile(e.target.files[0]);
     }
   };
 
   const handleBulkUpload = async (e: React.FormEvent) => {
     e.preventDefault();
-    
-    if (!user) {
-      toast({
-        title: "Authentication Error",
-        description: "You must be logged in to upload games",
-        variant: "destructive",
-      });
-      return;
-    }
-    
     if (!csvFile) {
       toast({
-        title: "No File Selected",
+        title: "No CSV file selected",
         description: "Please select a CSV file to upload",
         variant: "destructive",
       });
       return;
     }
-    
+
     setIsBulkUploading(true);
     const results = { successful: 0, failed: 0, errors: [] as string[] };
-    
+
     try {
-      const fileText = await csvFile.text();
-      const parseResult = Papa.parse<GameCsvRow>(fileText, {
-        header: true,
-        skipEmptyLines: true,
-      });
-      
-      const data = parseResult.data;
-      const errors = parseResult.errors;
-      
-      if (errors.length > 0) {
-        toast({
-          title: "CSV Parse Error",
-          description: "There were errors parsing your CSV file",
-          variant: "destructive",
-        });
-        setIsBulkUploading(false);
-        return;
-      }
-      
-      // Process each row in the CSV
-      for (const row of data) {
+      const text = await csvFile.text();
+      const { data } = Papa.parse(text, { header: true });
+
+      for (const row of data as GameCsvRow[]) {
         try {
-          // Skip empty rows
-          if (!row.title) {
-            continue;
-          }
-          
-          // Parse multi-value fields
-          const parsedTags = row.tags ? row.tags.split(',').map((t: string) => t.trim()) : [];
-          const parsedGenres = row.genres ? row.genres.split(',').map((g: string) => g.trim()) : [];
-          const parsedAiTools = row.ai_tools ? row.ai_tools.split(',').map((a: string) => a.trim()) : [];
-          
-          // Ensure iframe_url is a proper URL
-          let formattedIframeUrl = row.iframe_url || "";
-          if (formattedIframeUrl && !formattedIframeUrl.startsWith('http://') && !formattedIframeUrl.startsWith('https://')) {
-            formattedIframeUrl = `https://${formattedIframeUrl}`;
-          }
-          
-          const gameData = {
+          // Process each row and upload to Supabase
+          const { error } = await supabase.from('games').insert({
             title: row.title,
-            description: row.description || "",
-            long_description: row.long_description || "",
-            how_to_play: row.how_to_play || "",
+            description: row.description,
+            long_description: row.long_description,
+            how_to_play: row.how_to_play,
             image: row.image || "/placeholder.svg",
-            creator_id: user.id,
-            iframe_url: formattedIframeUrl,
-            github_url: row.github_url || "",
-            tags: parsedTags,
-            genres: parsedGenres,
-            ai_tools: parsedAiTools,
+            creator_id: user?.id,
+            iframe_url: row.iframe_url,
+            github_url: row.github_url,
+            tags: row.tags?.split(',').map(tag => tag.trim()),
+            genres: row.genres.split(',').map(genre => genre.trim()),
+            ai_tools: row.ai_tools.split(',').map(tool => tool.trim()),
             is_multiplayer: row.is_multiplayer === 'true',
-            creator_x_url: row.creator_x_url || "",
+            creator_x_url: row.creator_x_url,
             likes: 0,
             dislikes: 0,
             views: 0,
             favorites_count: 0
-          };
-          
-          // Validate required fields
-          if (!gameData.title || !gameData.description || !gameData.iframe_url || 
-              !gameData.genres.length || !gameData.ai_tools.length || !gameData.creator_x_url) {
-            results.failed++;
-            results.errors.push(`Row for "${gameData.title || 'Unnamed game'}": Missing required fields`);
-            continue;
-          }
-          
-          // Validate URL format for creator's X URL
-          if (!gameData.creator_x_url.includes('x.com/') && !gameData.creator_x_url.includes('twitter.com/')) {
-            results.failed++;
-            results.errors.push(`Row for "${gameData.title}": Invalid X URL format`);
-            continue;
-          }
-          
-          // Insert into Supabase
-          const { error } = await supabase.from('games').insert(gameData);
-          
-          if (error) {
-            results.failed++;
-            results.errors.push(`Failed to upload "${gameData.title}": ${error.message}`);
-          } else {
-            results.successful++;
-          }
-        } catch (rowError) {
+          });
+
+          if (error) throw error;
+          results.successful++;
+        } catch (error: any) {
           results.failed++;
-          results.errors.push(`Error processing row: ${(rowError as Error).message}`);
+          results.errors.push(`Error uploading ${row.title}: ${error.message}`);
         }
       }
-      
+
+      setBulkUploadResults(results);
       toast({
-        title: "Bulk Upload Results",
-        description: `Successfully uploaded ${results.successful} games. Failed: ${results.failed}.`,
+        title: "Bulk upload completed",
+        description: `Successfully uploaded ${results.successful} games. Failed: ${results.failed}`,
         variant: results.failed > 0 ? "destructive" : "default",
       });
-      
-      setBulkUploadResults(results);
-    } catch (error) {
-      console.error("Bulk upload error:", error);
+    } catch (error: any) {
       toast({
-        title: "Bulk Upload Error",
-        description: "An unexpected error occurred during bulk upload.",
+        title: "Bulk upload failed",
+        description: error.message,
         variant: "destructive",
       });
     } finally {
       setIsBulkUploading(false);
     }
   };
+  */
 
   if (!user) {
     return null // Handled by the useEffect redirect
@@ -817,6 +760,8 @@ export default function UploadPage() {
           </form>
         </div>
 
+        {/* Comment out bulk upload UI section */}
+        {/*
         <div className="mt-10 rounded-lg border border-gray-800 bg-card p-6">
           <h2 className="pixel-text mb-4 text-2xl font-bold">Bulk Upload Games</h2>
           <p className="mb-4 text-sm text-gray-400">
@@ -879,6 +824,7 @@ export default function UploadPage() {
             </div>
           )}
         </div>
+        */}
       </div>
     </div>
   )

@@ -2,7 +2,7 @@
 
 import type React from "react"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import Link from "next/link"
 import Image from "next/image"
 import { ThumbsUp, Eye, User, Filter, Search, Bookmark, ChevronDown, ChevronUp } from "lucide-react"
@@ -12,176 +12,31 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Checkbox } from "@/components/ui/checkbox"
 import { Label } from "@/components/ui/label"
 import { Input } from "@/components/ui/input"
+import { useSupabase } from "@/lib/supabase-provider"
 
-// Mock data for games
-const allGames = [
-  {
-    id: 1,
-    title: "Pixel Dungeon Crawler",
-    image: "/placeholder.svg?height=400&width=600",
-    creator: "PixelWizard",
-    likes: 1243,
-    play_count: 8976,
-    tags: ["RPG", "Roguelike", "Pixel Art"],
-    genre: "RPG",
-    multiplayer: false,
-    aiTool: "GPT-4",
-  },
-  {
-    id: 2,
-    title: "Space Defender 3000",
-    image: "/placeholder.svg?height=400&width=600",
-    creator: "AIGameDev",
-    likes: 892,
-    play_count: 5432,
-    tags: ["Shooter", "Arcade", "Space"],
-    genre: "Shooter",
-    multiplayer: true,
-    aiTool: "Claude",
-  },
-  {
-    id: 3,
-    title: "Neon Racer",
-    image: "/placeholder.svg?height=400&width=600",
-    creator: "SynthWave",
-    likes: 756,
-    play_count: 4321,
-    tags: ["Racing", "Cyberpunk", "Multiplayer"],
-    genre: "Racing",
-    multiplayer: true,
-    aiTool: "GPT-4",
-  },
-  {
-    id: 4,
-    title: "Zombie Survival",
-    image: "/placeholder.svg?height=400&width=600",
-    creator: "SurvivalGuru",
-    likes: 543,
-    play_count: 3210,
-    tags: ["Survival", "Horror", "Action"],
-    genre: "Survival",
-    multiplayer: true,
-    aiTool: "Claude",
-  },
-  {
-    id: 5,
-    title: "Puzzle Master",
-    image: "/placeholder.svg?height=400&width=600",
-    creator: "BrainTeaser",
-    likes: 421,
-    play_count: 2876,
-    tags: ["Puzzle", "Logic", "Casual"],
-    genre: "Puzzle",
-    multiplayer: false,
-    aiTool: "GPT-4",
-  },
-  {
-    id: 6,
-    title: "Fantasy Quest",
-    image: "/placeholder.svg?height=400&width=600",
-    creator: "RPGLover",
-    likes: 387,
-    play_count: 2543,
-    tags: ["RPG", "Fantasy", "Adventure"],
-    genre: "RPG",
-    multiplayer: false,
-    aiTool: "Claude",
-  },
-  {
-    id: 7,
-    title: "Retro Platformer",
-    image: "/placeholder.svg?height=400&width=600",
-    creator: "OldSchoolDev",
-    likes: 356,
-    play_count: 2321,
-    tags: ["Platformer", "Retro", "2D"],
-    genre: "Platformer",
-    multiplayer: false,
-    aiTool: "GPT-4",
-  },
-  {
-    id: 8,
-    title: "Strategy Empire",
-    image: "/placeholder.svg?height=400&width=600",
-    creator: "MindMaster",
-    likes: 312,
-    play_count: 1987,
-    tags: ["Strategy", "Simulation", "Building"],
-    genre: "Strategy",
-    multiplayer: true,
-    aiTool: "Claude",
-  },
-  {
-    id: 9,
-    title: "Card Battler",
-    image: "/placeholder.svg?height=400&width=600",
-    creator: "DeckBuilder",
-    likes: 298,
-    play_count: 1765,
-    tags: ["Card Game", "Strategy", "PvP"],
-    genre: "Card Game",
-    multiplayer: true,
-    aiTool: "GPT-4",
-  },
-  {
-    id: 10,
-    title: "Endless Runner",
-    image: "/placeholder.svg?height=400&width=600",
-    creator: "SpeedDemon",
-    likes: 276,
-    play_count: 1654,
-    tags: ["Runner", "Arcade", "Casual"],
-    genre: "Arcade",
-    multiplayer: false,
-    aiTool: "Claude",
-  },
-  {
-    id: 11,
-    title: "Tower Defense",
-    image: "/placeholder.svg?height=400&width=600",
-    creator: "StrategyKing",
-    likes: 254,
-    play_count: 1543,
-    tags: ["Strategy", "Tower Defense", "Action"],
-    genre: "Strategy",
-    multiplayer: false,
-    aiTool: "GPT-4",
-  },
-  {
-    id: 12,
-    title: "Pixel Fighter",
-    image: "/placeholder.svg?height=400&width=600",
-    creator: "FightMaster",
-    likes: 243,
-    play_count: 1432,
-    tags: ["Fighting", "Pixel Art", "PvP"],
-    genre: "Fighting",
-    multiplayer: true,
-    aiTool: "Claude",
-  },
-]
+interface Game {
+  id: string;
+  title: string;
+  image?: string;
+  creator: string;
+  creator_x_url?: string;
+  tags?: string[];
+  genres?: string[];
+  ai_tools?: string[];
+  likes?: number;
+  play_count?: number;
+  favorites_count?: number;
+  is_multiplayer?: boolean;
+  created_at?: string;
+}
 
-// Available filters
-const genres = [
-  "RPG",
-  "Shooter",
-  "Racing",
-  "Survival",
-  "Puzzle",
-  "Platformer",
-  "Strategy",
-  "Card Game",
-  "Arcade",
-  "Fighting",
-]
-const aiTools = [
-  "GPT-4o",
-  "GPT-4 Turbo",
+// Add this constant at the top of the file, after the imports
+const AI_TOOLS = [
   "GPT-4",
+  "GPT-4 Turbo",
   "GPT-3.5 Turbo",
   "GPT-3.5",
   "GPT-4.5 Preview",
-  "o3-mini",
   "Claude 3.5 Sonnet",
   "Claude 3.5 Haiku",
   "Claude 3.5 Opus",
@@ -200,98 +55,88 @@ const aiTools = [
   "Gemini 1.5 Pro",
   "Gemini 1.5 Flash",
   "Gemini 1 Pro",
-  "Gemini 1 Ultra"
-]
-const sortOptions = ["Most Popular", "Newest", "Most Played"]
-
-type Game = {
-  id: number;
-  title: string;
-  image: string;
-  likes: number;
-  play_count: number;
-  creator: string;
-  creator_x_url?: string;
-  tags: string[];
-  favorites_count?: number;
-  genre?: string;
-  multiplayer?: boolean;
-  aiTool?: string;
-}
+  "Gemini 1 Ultra",
+  "o3-mini"
+];
 
 export default function ExplorePage() {
-  const [games, setGames] = useState(allGames)
+  const { supabase } = useSupabase()
+  const [games, setGames] = useState<Game[]>([])
+  const [loading, setLoading] = useState(true)
   const [selectedGenres, setSelectedGenres] = useState<string[]>([])
-  const [selectedAITools, setSelectedAITools] = useState<string[]>([])
+  const [selectedAiTools, setSelectedAiTools] = useState<string[]>([])
   const [multiplayerOnly, setMultiplayerOnly] = useState(false)
-  const [sortBy, setSortBy] = useState("Most Popular")
+  const [sortBy, setSortBy] = useState<string>("newest")
   const [searchQuery, setSearchQuery] = useState("")
   const [expandedGenres, setExpandedGenres] = useState(false)
   const [expandedAITools, setExpandedAITools] = useState(false)
 
-  const applyFilters = () => {
-    let filteredGames = [...allGames]
+  useEffect(() => {
+    async function fetchGames() {
+      try {
+        setLoading(true)
+        const { data, error } = await supabase
+          .from('games')
+          .select('*')
+          .order('created_at', { ascending: false })
 
-    // Filter by search query
-    if (searchQuery.trim() !== "") {
-      filteredGames = filteredGames.filter((game) => game.title.toLowerCase().includes(searchQuery.toLowerCase()))
+        if (error) {
+          console.error('Error fetching games:', error)
+          return
+        }
+
+        setGames(data || [])
+      } catch (error) {
+        console.error('Error:', error)
+      } finally {
+        setLoading(false)
+      }
     }
 
-    // Filter by genre
-    if (selectedGenres.length > 0) {
-      filteredGames = filteredGames.filter((game) => selectedGenres.includes(game.genre))
-    }
+    fetchGames()
+  }, [supabase])
 
-    // Filter by AI tool
-    if (selectedAITools.length > 0) {
-      filteredGames = filteredGames.filter((game) => selectedAITools.includes(game.aiTool))
-    }
+  // Get unique genres from actual games
+  const availableGenres = Array.from(new Set(games.flatMap(game => game.genres || [])))
 
-    // Filter by multiplayer
-    if (multiplayerOnly) {
-      filteredGames = filteredGames.filter((game) => game.multiplayer)
-    }
-
-    // Sort games
-    if (sortBy === "Most Popular") {
-      filteredGames.sort((a, b) => b.likes - a.likes)
-    } else if (sortBy === "Most Played") {
-      filteredGames.sort((a, b) => b.play_count - a.play_count)
-    }
-    // For 'Newest', we would normally sort by date, but our mock data doesn't have dates
-
-    setGames(filteredGames)
-  }
-
-  const toggleGenre = (genre: string) => {
-    setSelectedGenres((prev) => (prev.includes(genre) ? prev.filter((g) => g !== genre) : [...prev, genre]))
-  }
-
-  const toggleAITool = (tool: string) => {
-    setSelectedAITools((prev) => (prev.includes(tool) ? prev.filter((t) => t !== tool) : [...prev, tool]))
-  }
+  const toggleGenreExpand = () => setExpandedGenres(!expandedGenres)
+  const toggleAIToolsExpand = () => setExpandedAITools(!expandedAITools)
 
   const resetFilters = () => {
     setSelectedGenres([])
-    setSelectedAITools([])
+    setSelectedAiTools([])
     setMultiplayerOnly(false)
-    setSortBy("Most Popular")
+    setSortBy("newest")
     setSearchQuery("")
-    setGames(allGames)
   }
 
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault()
-    applyFilters()
-  }
+  // Filter and sort games
+  const filteredAndSortedGames = games
+    .filter(game => {
+      const matchesSearch = !searchQuery || 
+        game.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (game.tags && game.tags.some(tag => tag.toLowerCase().includes(searchQuery.toLowerCase())))
 
-  const toggleGenreExpand = () => {
-    setExpandedGenres(!expandedGenres)
-  }
-
-  const toggleAIToolsExpand = () => {
-    setExpandedAITools(!expandedAITools)
-  }
+      const matchesGenres = selectedGenres.length === 0 || 
+        (game.genres && game.genres.some(genre => selectedGenres.includes(genre)))
+    
+      const matchesAiTools = selectedAiTools.length === 0 || 
+        (game.ai_tools && game.ai_tools.some(tool => selectedAiTools.includes(tool)))
+    
+      return matchesSearch && matchesGenres && matchesAiTools
+    })
+    .sort((a, b) => {
+      switch (sortBy) {
+        case "Most Popular":
+          return (b.likes || 0) - (a.likes || 0)
+        case "Most Played":
+          return (b.play_count || 0) - (a.play_count || 0)
+        case "Newest":
+          return new Date(b.created_at || Date.now()).getTime() - new Date(a.created_at || Date.now()).getTime()
+        default:
+          return 0
+      }
+    })
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -302,7 +147,7 @@ export default function ExplorePage() {
 
         <div className="flex w-full flex-col space-y-4 md:w-auto md:flex-row md:space-x-4 md:space-y-0">
           {/* Search Bar */}
-          <form onSubmit={(e) => { e.preventDefault(); applyFilters(); }} className="flex w-full md:w-auto">
+          <form onSubmit={(e) => { e.preventDefault(); resetFilters(); }} className="flex w-full md:w-auto">
             <div className="relative flex-grow">
               <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-500" />
               <Input
@@ -323,7 +168,7 @@ export default function ExplorePage() {
             value={sortBy}
             onValueChange={(value) => {
               setSortBy(value);
-              setTimeout(applyFilters, 0);
+              resetFilters();
             }}
           >
             <SelectTrigger className="w-[180px]">
@@ -365,12 +210,18 @@ export default function ExplorePage() {
               
               {expandedGenres ? (
                 <div className="space-y-2">
-                  {genres.map((genre) => (
+                  {availableGenres.map((genre) => (
                     <div key={genre} className="flex items-center space-x-2">
                       <Checkbox
                         id={`genre-${genre}`}
                         checked={selectedGenres.includes(genre)}
-                        onCheckedChange={() => toggleGenre(genre)}
+                        onCheckedChange={(checked) => {
+                          if (checked) {
+                            setSelectedGenres([...selectedGenres, genre])
+                          } else {
+                            setSelectedGenres(selectedGenres.filter((g) => g !== genre))
+                          }
+                        }}
                       />
                       <Label htmlFor={`genre-${genre}`} className="text-sm font-normal">
                         {genre}
@@ -393,7 +244,7 @@ export default function ExplorePage() {
               )}
             </div>
 
-            {/* AI Tool Filter - Now Expandable */}
+            {/* AI Tool Filter - Now with Checkboxes */}
             <div className="mb-6">
               <div 
                 className="flex items-center justify-between cursor-pointer mb-3" 
@@ -408,13 +259,19 @@ export default function ExplorePage() {
               </div>
               
               {expandedAITools ? (
-                <div className="space-y-2">
-                  {aiTools.map((tool) => (
+                <div className="space-y-2 max-h-60 overflow-y-auto pr-2">
+                  {AI_TOOLS.map((tool) => (
                     <div key={tool} className="flex items-center space-x-2">
                       <Checkbox
                         id={`tool-${tool}`}
-                        checked={selectedAITools.includes(tool)}
-                        onCheckedChange={() => toggleAITool(tool)}
+                        checked={selectedAiTools.includes(tool)}
+                        onCheckedChange={(checked) => {
+                          if (checked) {
+                            setSelectedAiTools([...selectedAiTools, tool])
+                          } else {
+                            setSelectedAiTools(selectedAiTools.filter((t) => t !== tool))
+                          }
+                        }}
                       />
                       <Label htmlFor={`tool-${tool}`} className="text-sm font-normal">
                         {tool}
@@ -424,9 +281,9 @@ export default function ExplorePage() {
                 </div>
               ) : (
                 <div className="space-y-2">
-                  {selectedAITools.length > 0 ? (
+                  {selectedAiTools.length > 0 ? (
                     <div className="text-sm text-gray-400">
-                      {selectedAITools.length} selected
+                      {selectedAiTools.length} selected
                     </div>
                   ) : (
                     <div className="text-sm text-gray-400">
@@ -452,7 +309,7 @@ export default function ExplorePage() {
             </div>
 
             {/* Apply Button with pixel styling */}
-            <Button onClick={applyFilters} className="w-full pixel-button">
+            <Button onClick={resetFilters} className="w-full pixel-button">
               Apply Filters
             </Button>
           </div>
@@ -460,73 +317,67 @@ export default function ExplorePage() {
 
         {/* Games Grid */}
         <div className="col-span-12 md:col-span-9">
-          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-            {games.map((game: Game) => (
-              <Link key={game.id} href={`/game/${game.id}`} className="game-card">
-                <Image
-                  src={game.image || "/placeholder.svg"}
-                  alt={game.title}
-                  fill
-                  className="object-cover transition-transform duration-300 hover:scale-105"
-                />
-                <div className="game-card-content">
-                  <div className="flex flex-wrap gap-2">
-                    {game.tags.slice(0, 2).map((tag) => (
-                      <span key={tag} className="tag">
-                        {tag}
-                      </span>
-                    ))}
-                    {game.tags.length > 2 && <span className="tag">+{game.tags.length - 2}</span>}
+          {loading ? (
+            <div className="text-center py-12">
+              <p>Loading games...</p>
+            </div>
+          ) : filteredAndSortedGames.length > 0 ? (
+            <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+              {filteredAndSortedGames.map((game) => (
+                <Link key={game.id} href={`/game/${game.id}`} className="game-card">
+                  <div className="relative aspect-video w-full overflow-hidden rounded-lg">
+                    <Image
+                      src={game.image || "/placeholder.svg"}
+                      alt={game.title}
+                      fill
+                      className="object-cover transition-transform duration-300 hover:scale-105"
+                    />
                   </div>
-                  <div>
-                    <h3 className="pixel-text mb-2 text-lg font-bold">{game.title}</h3>
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center space-x-2">
+                  <div className="game-card-content">
+                    <div className="flex flex-wrap gap-2">
+                      {game.tags && game.tags.slice(0, 2).map((tag) => (
+                        <span key={tag} className="tag">
+                          {tag}
+                        </span>
+                      ))}
+                      {game.tags && game.tags.length > 2 && <span className="tag">+{game.tags.length - 2}</span>}
+                    </div>
+                    <div>
+                      <h3 className="pixel-text mb-2 text-lg font-bold">{game.title}</h3>
+                      <div className="flex items-center justify-between">
                         <div className="flex items-center space-x-1 text-xs text-white">
-                          <User className="h-3 w-3 text-primary" />
-                          <span>{game.creator}</span>
+                          {game.creator_x_url && (
+                            <div className="flex items-center space-x-1">
+                              <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="currentColor" className="h-3 w-3 text-primary">
+                                <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+                              </svg>
+                              <span>{extractXHandle(game.creator_x_url)}</span>
+                            </div>
+                          )}
                         </div>
-                        {game.creator_x_url && (
-                          <a 
-                            href={game.creator_x_url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="flex items-center space-x-1 text-xs text-white hover:text-primary"
-                            onClick={(e) => e.stopPropagation()}
-                          >
-                            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="currentColor" className="h-3 w-3 text-primary">
-                              <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
-                            </svg>
-                            <span>{extractXHandle(game.creator_x_url)}</span>
-                          </a>
-                        )}
-                      </div>
-                      <div className="flex space-x-3">
-                        <div className="stats-item">
-                          <ThumbsUp className="h-3 w-3 text-primary" />
-                          <span className="text-white">{game.likes.toLocaleString()}</span>
-                        </div>
-                        <div className="stats-item">
-                          <Eye className="h-3 w-3 text-primary" />
-                          <span className="text-white">{game.play_count?.toLocaleString() || 0}</span>
-                        </div>
-                        <div className="stats-item">
-                          <Bookmark className="h-3 w-3 text-primary" />
-                          <span className="text-white">{game.favorites_count?.toLocaleString() || 0}</span>
+                        <div className="flex space-x-3">
+                          <div className="stats-item">
+                            <ThumbsUp className="h-3 w-3 text-primary" />
+                            <span>{(game.likes || 0).toLocaleString()}</span>
+                          </div>
+                          <div className="stats-item">
+                            <Eye className="h-3 w-3 text-primary" />
+                            <span>{(game.play_count || 0).toLocaleString()}</span>
+                          </div>
+                          <div className="stats-item">
+                            <Bookmark className="h-3 w-3 text-primary" />
+                            <span>{(game.favorites_count || 0).toLocaleString()}</span>
+                          </div>
                         </div>
                       </div>
                     </div>
                   </div>
-                </div>
-              </Link>
-            ))}
-          </div>
-
-          {games.length === 0 && (
-            <div className="flex h-64 flex-col items-center justify-center rounded-lg border border-dashed border-gray-700 p-8 text-center">
-              <h3 className="pixel-text mb-2 text-xl">No games found</h3>
-              <p className="mb-4 text-gray-400">Try adjusting your search or filters to find more games.</p>
-              <Button onClick={resetFilters}>Reset Filters</Button>
+                </Link>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-12">
+              <p>No games found matching the selected filters.</p>
             </div>
           )}
         </div>

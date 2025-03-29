@@ -7,53 +7,61 @@ import { ThumbsUp, Eye, User, Bookmark } from "lucide-react"
 import TrendingGames from "@/components/trending-games"
 import SnakeAnimation from './components/SnakeAnimation'
 import { useSupabase } from "@/lib/supabase-provider"
+import { useState, useEffect } from "react"
 
-// Featured games data
-const featuredGames = [
-  {
-    id: 1,
-    title: "Pixel Dungeon Crawler",
-    image: "/placeholder.svg?height=400&width=600",
-    creator: "PixelWizard",
-    likes: 1243,
-    views: 8976,
-    tags: ["RPG", "Roguelike", "Pixel Art"],
-  },
-  {
-    id: 2,
-    title: "Space Defender 3000",
-    image: "/placeholder.svg?height=400&width=600",
-    creator: "AIGameDev",
-    likes: 892,
-    views: 5432,
-    tags: ["Shooter", "Arcade", "Space"],
-  },
-  {
-    id: 3,
-    title: "Neon Racer",
-    image: "/placeholder.svg?height=400&width=600",
-    creator: "SynthWave",
-    likes: 756,
-    views: 4321,
-    tags: ["Racing", "Cyberpunk", "Multiplayer"],
-  },
-]
-
-type Game = {
-  id: number;
+interface Game {
+  id: string;
   title: string;
-  image: string;
-  likes: number;
-  views: number;
+  image?: string;
   creator: string;
-  tags: string[];
-  favorites_count?: number;
+  creator_x_url?: string;
+  tags?: string[];
+  likes?: number;
   play_count?: number;
+  favorites_count?: number;
+}
+
+// We'll replace this static data with database data
+const featuredGameTitles = ["Flight Simulator 2025", "Rotshot", "Vibe Sail"]
+
+function extractXHandle(url: string) {
+  if (!url) return "";
+  const match = url.match(/(?:x\.com|twitter\.com)\/([^\/\?]+)/);
+  return match ? `@${match[1]}` : "X";
 }
 
 export default function Home() {
-  const { user } = useSupabase()
-  
+  const { user, supabase } = useSupabase()
+  const [featuredGames, setFeaturedGames] = useState<Game[]>([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    async function fetchFeaturedGames() {
+      try {
+        setLoading(true)
+        
+        // Fetch the specific featured games from the database
+        const { data, error } = await supabase
+          .from('games')
+          .select('*')
+          .in('title', featuredGameTitles)
+        
+        if (error) throw error
+        
+        // If we found the games, use them
+        if (data && data.length > 0) {
+          setFeaturedGames(data)
+        }
+      } catch (error) {
+        console.error("Error fetching featured games:", error)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchFeaturedGames()
+  }, [supabase])
+
   return (
     <div className="flex flex-col bg-black">
       {/* Hero Section */}
@@ -83,51 +91,66 @@ export default function Home() {
       <section className="py-20 bg-black">
         <div className="container mx-auto px-4">
           <h2 className="pixel-text mb-10 text-center text-3xl font-bold text-primary">Featured Games</h2>
-          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-            {featuredGames.map((game: Game) => (
-              <Link key={game.id} href={`/game/${game.id}`} className="game-card">
-                <Image
-                  src={game.image || "/placeholder.svg"}
-                  alt={game.title}
-                  fill
-                  className="object-cover transition-transform duration-300 hover:scale-105"
-                />
-                <div className="game-card-content">
-                  <div className="flex flex-wrap gap-2">
-                    {game.tags.slice(0, 2).map((tag) => (
-                      <span key={tag} className="tag">
-                        {tag}
-                      </span>
-                    ))}
-                    {game.tags.length > 2 && <span className="tag">+{game.tags.length - 2}</span>}
-                  </div>
-                  <div>
-                    <h3 className="pixel-text mb-2 text-lg font-bold text-white">{game.title}</h3>
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center space-x-1 text-xs text-white">
-                        <User className="h-3 w-3 text-primary" />
-                        <span>{game.creator}</span>
-                      </div>
-                      <div className="flex space-x-3">
-                        <div className="stats-item">
-                          <ThumbsUp className="h-3 w-3 text-primary" />
-                          <span>{game.likes.toLocaleString()}</span>
+          
+          {loading ? (
+            <div className="text-center py-12">Loading featured games...</div>
+          ) : featuredGames.length > 0 ? (
+            <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+              {featuredGames.map((game) => (
+                <Link key={game.id} href={`/game/${game.id}`} className="game-card">
+                  <Image
+                    src={game.image || "/placeholder.svg"}
+                    alt={game.title}
+                    fill
+                    className="object-cover transition-transform duration-300 hover:scale-105"
+                  />
+                  <div className="game-card-content">
+                    <div className="flex flex-wrap gap-2">
+                      {game.tags && game.tags.slice(0, 2).map((tag) => (
+                        <span key={tag} className="tag">
+                          {tag}
+                        </span>
+                      ))}
+                      {game.tags && game.tags.length > 2 && <span className="tag">+{game.tags.length - 2}</span>}
+                    </div>
+                    <div>
+                      <h3 className="pixel-text mb-2 text-lg font-bold text-white">{game.title}</h3>
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center space-x-1 text-xs text-white">
+                          {game.creator_x_url && (
+                            <div className="flex items-center space-x-1">
+                              <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="currentColor" className="h-3 w-3 text-primary">
+                                <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+                              </svg>
+                              <span>{extractXHandle(game.creator_x_url)}</span>
+                            </div>
+                          )}
                         </div>
-                        <div className="stats-item">
-                          <Eye className="h-3 w-3 text-primary" />
-                          <span>{game.play_count?.toLocaleString() || 0}</span>
-                        </div>
-                        <div className="stats-item">
-                          <Bookmark className="h-3 w-3 text-primary" />
-                          <span>{game.favorites_count?.toLocaleString() || 0}</span>
+                        <div className="flex space-x-3">
+                          <div className="stats-item">
+                            <ThumbsUp className="h-3 w-3 text-primary" />
+                            <span>{(game.likes || 0).toLocaleString()}</span>
+                          </div>
+                          <div className="stats-item">
+                            <Eye className="h-3 w-3 text-primary" />
+                            <span>{(game.play_count || 0).toLocaleString()}</span>
+                          </div>
+                          <div className="stats-item">
+                            <Bookmark className="h-3 w-3 text-primary" />
+                            <span>{(game.favorites_count || 0).toLocaleString()}</span>
+                          </div>
                         </div>
                       </div>
                     </div>
                   </div>
-                </div>
-              </Link>
-            ))}
-          </div>
+                </Link>
+              ))}
+            </div>
+          ) : (
+            <div className="text-center py-12">
+              <p>Featured games not found. Check back soon!</p>
+            </div>
+          )}
         </div>
       </section>
 

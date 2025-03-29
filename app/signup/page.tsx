@@ -19,7 +19,8 @@ export default function SignupPage() {
   const [username, setUsername] = useState("")
   const [role] = useState("creator")
   const [loading, setLoading] = useState(false)
-  const [socialLoading, setSocialLoading] = useState<string | null>(null)
+  // Comment out social loading state
+  // const [socialLoading, setSocialLoading] = useState<string | null>(null)
   const { signUp } = useSupabase()
   const router = useRouter()
   const { toast } = useToast()
@@ -51,6 +52,8 @@ export default function SignupPage() {
     }
   }
 
+  // Comment out social signup function
+  /*
   const handleSocialSignup = async (provider: string) => {
     setSocialLoading(provider)
 
@@ -82,6 +85,7 @@ export default function SignupPage() {
       setSocialLoading(null)
     }
   }
+  */
 
   return (
     <div className="container mx-auto flex min-h-[80vh] items-center justify-center px-4">
@@ -94,7 +98,8 @@ export default function SignupPage() {
         </div>
 
         <div className="rounded-lg border border-gray-800 bg-card p-5">
-          {/* Social Signup Options */}
+          {/* Comment out social signup UI */}
+          {/*
           <div className="mb-4 grid grid-cols-3 gap-2">
             <Button
               type="button"
@@ -176,6 +181,7 @@ export default function SignupPage() {
               <span className="bg-card px-2 text-muted-foreground">Or</span>
             </div>
           </div>
+          */}
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-1">

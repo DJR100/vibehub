@@ -285,6 +285,14 @@ function EditProfileDialog({ isOpen, onClose, onSave, initialData }: EditProfile
   )
 }
 
+// Add this function to any component that needs it
+function extractXHandle(url: string) {
+  if (!url) return "";
+  // Try to extract handle from x.com or twitter.com URLs
+  const match = url.match(/(?:twitter\.com|x\.com)\/([^\/\?]+)/i);
+  return match ? "@" + match[1] : url;
+}
+
 export default function ProfilePage() {
   const params = useParams()
   const { id } = params
@@ -809,20 +817,20 @@ export default function ProfilePage() {
                               <User className="h-3 w-3 text-primary" />
                               <span>{game.creator}</span>
                             </div>
-                            <div className="flex space-x-3">
-                              <div className="stats-item">
-                                <ThumbsUp className="h-3 w-3 text-primary" />
-                                <span>{game.likes.toLocaleString()}</span>
-                              </div>
-                              <div className="stats-item">
-                                <Eye className="h-3 w-3 text-primary" />
-                                <span>{(game.play_count || 0).toLocaleString()}</span>
-                              </div>
-                              <div className="stats-item">
-                                <Bookmark className="h-3 w-3 text-primary" />
-                                <span>{game.favorites_count?.toLocaleString() || 0}</span>
-                              </div>
-                            </div>
+                            {game.creator_x_url && (
+                              <a 
+                                href={game.creator_x_url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="flex items-center space-x-1 text-xs text-white hover:text-primary"
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="currentColor" className="h-3 w-3 text-primary">
+                                  <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+                                </svg>
+                                <span>{extractXHandle(game.creator_x_url)}</span>
+                              </a>
+                            )}
                           </div>
                         </div>
                       </div>
