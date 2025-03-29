@@ -19,14 +19,14 @@ export default function AboutPage() {
         <section className="mb-16">
           <div className="rounded-lg border border-gray-800 bg-card p-8">
             <h2 className="pixel-text mb-6 text-2xl font-bold">Our Mission</h2>
-            <div className="grid grid-cols-1 gap-8 md:grid-cols-2">
-              <div>
-                <p className="mb-4 text-white">
+            <div className="flex flex-col md:flex-row gap-8 items-center">
+              <div className="md:w-2/3">
+                <p className="text-white mb-4">
                   VibeHub is the home for AI-built web games, creating a vibrant community where players can discover
                   and enjoy games created with AI tools, and where creators can showcase their work to a passionate
                   audience.
                 </p>
-                <p className="mb-4 text-white">
+                <p className="text-white">
                   We believe that AI-powered game development is democratizing game creation, allowing more people than
                   ever to bring their creative visions to life. Our platform celebrates this new wave of creativity by
                   providing a dedicated space for these games to thrive.
@@ -36,12 +36,13 @@ export default function AboutPage() {
                   AI-built games with the world, VibeHub is the platform for you.
                 </p>
               </div>
-              <div className="relative aspect-video overflow-hidden rounded-lg flex items-center justify-center bg-black">
-                <Image
-                  src="/brain01.png"
-                  alt="AI Brain Circuit - VibeHub Mission"
-                  fill
-                  className="object-contain"
+              <div className="md:w-1/3">
+                <Image 
+                  src="/Brain01.png" 
+                  alt="AI Brain Circuit - VibeHub Mission" 
+                  width={400} 
+                  height={300}
+                  className="rounded-lg w-full h-auto"
                   priority
                 />
               </div>
