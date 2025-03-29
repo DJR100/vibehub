@@ -117,13 +117,15 @@ export default function Home() {
                       <h3 className="pixel-text mb-2 text-lg font-bold text-white">{game.title}</h3>
                       <div className="flex items-center justify-between">
                         <div className="flex items-center space-x-1 text-xs text-white">
-                          {game.creator_x_url && (
+                          {game.creator_x_url ? (
                             <div className="flex items-center space-x-1">
                               <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="currentColor" className="h-3 w-3 text-primary">
                                 <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
                               </svg>
                               <span>{extractXHandle(game.creator_x_url)}</span>
                             </div>
+                          ) : (
+                            <div className="text-xs text-white">by {game.creator}</div>
                           )}
                         </div>
                         <div className="flex space-x-3">

@@ -309,6 +309,7 @@ export default function ProfilePage() {
   const [favoriteGames, setFavoriteGames] = useState<any[]>([])
   const [isLoading, setIsLoading] = useState(false)
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false)
+  const [playHistory, setPlayHistory] = useState<any[]>([])
   const [profileStats, setProfileStats] = useState({
     gamesPlayed: 0,
     totalPlays: 0,
@@ -329,6 +330,7 @@ export default function ProfilePage() {
         setLoading(true)
         
         try {
+          console.log('Fetching profile data for ID:', id);
           const { data, error } = await supabase
             .from('profiles')
             .select('*')
@@ -336,19 +338,24 @@ export default function ProfilePage() {
             .single()
           
           if (error || !data) {
+            console.error('Error fetching profile or no data:', error);
             // User not found, redirect to explore
             router.push("/explore")
             return
           }
           
+          console.log('Profile data fetched:', data);
+          
           // Merge auth metadata with profile data for your own profile
           if (user && user.id === id) {
+            console.log('Setting own profile data');
             setProfileUser({
               ...user,
               ...data
             })
             setIsOwnProfile(true)
           } else {
+            console.log('Setting other user profile data');
             setProfileUser(data)
             setIsOwnProfile(false)
           }
@@ -474,6 +481,8 @@ export default function ProfilePage() {
       if (!profileUser?.id) return;
 
       try {
+        console.log('Fetching play history for user:', profileUser.id);
+
         // Fetch all play history records
         const { data: playHistoryData } = await supabase
           .from('play_history')
@@ -516,6 +525,44 @@ export default function ProfilePage() {
             gamesCreated: gamesCreated || 0
           }));
         }
+        
+        // Fetch detailed play history
+        const { data: detailedPlayHistory, error: historyError } = await supabase
+          .from('play_history')
+          .select(`
+            id,
+            created_at,
+            game_id,
+            games:game_id (
+              id,
+              title,
+              image,
+              profiles:creator_id (username)
+            )
+          `)
+          .eq('user_id', profileUser.id)
+          .order('created_at', { ascending: false })
+          .limit(10);
+
+        console.log('Play history fetch result:', { detailedPlayHistory, historyError });
+
+        if (!historyError && detailedPlayHistory) {
+          // Format the play history data
+          const formattedHistory = detailedPlayHistory.map((item: any) => ({
+            id: item.id,
+            gameId: item.game_id,
+            title: item.games?.title || "Unknown Game",
+            image: item.games?.image || "/placeholder.svg",
+            creator: item.games?.profiles?.username || "Unknown Creator",
+            playedAt: item.created_at
+          }));
+          
+          console.log('Formatted play history:', formattedHistory);
+          setPlayHistory(formattedHistory);
+        } else {
+          console.error('Error fetching play history:', historyError);
+          setPlayHistory([]);
+        }
       } catch (error) {
         console.error('Error fetching play stats:', error);
       }
@@ -523,6 +570,10 @@ export default function ProfilePage() {
 
     fetchPlayStats();
   }, [profileUser?.id, supabase]);
+
+  useEffect(() => {
+    console.log('Play history state updated:', playHistory?.length);
+  }, [playHistory]);
 
   const handleSaveProfile = async (profileData: ProfileData) => {
     if (!user) return;
@@ -591,21 +642,112 @@ export default function ProfilePage() {
     }
 
     try {
-      const { error } = await supabase
+      // Set play start time in localStorage
+      const startTime = Date.now();
+      const playSessionKey = `game_play_${gameId}_${user.id}`;
+      localStorage.setItem(playSessionKey, startTime.toString());
+      
+      // Track the play first
+      const { data, error } = await supabase
         .from('play_history')
         .insert({
           game_id: gameId,
-          user_id: user.id
-        });
+          user_id: user.id,
+          duration_seconds: 0 // Initial duration, will be updated when game closes
+        })
+        .select()
+        .single();
 
       if (error) {
         console.error('Error tracking game play:', error);
       }
       
+      // Save the play_history record ID for later update
+      if (data) {
+        localStorage.setItem(`${playSessionKey}_record_id`, data.id);
+      }
+      
       // Open game in new tab
-      window.open(gameUrl, '_blank');
+      const gameWindow = window.open(gameUrl, '_blank');
+      
+      // Set up an event to detect when user returns to this page
+      window.addEventListener('focus', function onFocus() {
+        updatePlayDuration(playSessionKey);
+        window.removeEventListener('focus', onFocus);
+      });
     } catch (error) {
       console.error('Error tracking game play:', error);
+      // Still open the game even if tracking fails
+      window.open(gameUrl, '_blank');
+    }
+  };
+
+  // Function to update play duration when user returns from game
+  const updatePlayDuration = async (playSessionKey: string) => {
+    try {
+      const startTimeStr = localStorage.getItem(playSessionKey);
+      const recordId = localStorage.getItem(`${playSessionKey}_record_id`);
+      
+      if (!startTimeStr || !recordId) {
+        console.error('Missing play session data');
+        return;
+      }
+      
+      const startTime = parseInt(startTimeStr);
+      const endTime = Date.now();
+      const durationSeconds = Math.floor((endTime - startTime) / 1000);
+      
+      // Only update if the duration is reasonable (more than 5 seconds, less than 6 hours)
+      if (durationSeconds > 5 && durationSeconds < 21600) {
+        const { error } = await supabase
+          .from('play_history')
+          .update({ duration_seconds: durationSeconds })
+          .eq('id', recordId);
+          
+        if (error) {
+          console.error('Error updating play duration:', error);
+        } else {
+          console.log(`Updated play duration: ${durationSeconds} seconds`);
+        }
+      }
+      
+      // Clean up localStorage
+      localStorage.removeItem(playSessionKey);
+      localStorage.removeItem(`${playSessionKey}_record_id`);
+      
+    } catch (error) {
+      console.error('Error updating play duration:', error);
+    }
+  };
+  
+  // Check for any unfinished play sessions when the page loads
+  useEffect(() => {
+    if (user && id) {
+      // Check for any games started from this profile page
+      const keys = Object.keys(localStorage);
+      const sessionKeys = keys.filter(key => key.startsWith('game_play_') && key.endsWith(`_${user.id}`));
+      
+      sessionKeys.forEach((key: string) => {
+        if (!key.includes('_record_id')) {
+          updatePlayDuration(key);
+        }
+      });
+    }
+  }, [user, id]);
+
+  // Helper function to format duration
+  const formatDuration = (seconds: number): string => {
+    if (!seconds || seconds <= 0) return "Unknown";
+    
+    if (seconds < 60) {
+      return `${seconds} sec`;
+    } else if (seconds < 3600) {
+      const minutes = Math.floor(seconds / 60);
+      return `${minutes} min`;
+    } else {
+      const hours = Math.floor(seconds / 3600);
+      const minutes = Math.floor((seconds % 3600) / 60);
+      return `${hours}h ${minutes}min`;
     }
   };
 
@@ -864,72 +1006,58 @@ export default function ProfilePage() {
               <h3 className="pixel-text text-xl font-bold">Play History</h3>
 
               <div className="rounded-lg border border-gray-800 bg-card">
-                <div className="p-4">
-                  <div className="flex items-center justify-between border-b border-gray-800 pb-4">
-                    <div className="flex-1 font-medium">Game</div>
-                    <div className="w-24 text-center font-medium">Date</div>
-                    <div className="w-24 text-center font-medium">Time Played</div>
+                {playHistory && playHistory.length > 0 ? (
+                  <div className="p-4">
+                    <div className="flex items-center justify-between border-b border-gray-800 pb-4">
+                      <div className="flex-1 font-medium">Game</div>
+                      <div className="w-32 text-center font-medium">Date Played</div>
+                    </div>
+
+                    <div className="divide-y divide-gray-800">
+                      {playHistory.map((play) => (
+                        <Link 
+                          key={play.id} 
+                          href={`/game/${play.gameId}`} 
+                          className="flex items-center justify-between py-4 hover:bg-gray-800/30"
+                        >
+                          <div className="flex flex-1 items-center space-x-3">
+                            <div className="relative h-10 w-10 overflow-hidden rounded">
+                              <Image
+                                src={play.image}
+                                alt={play.title}
+                                fill
+                                className="object-cover"
+                              />
+                            </div>
+                            <div>
+                              <div className="font-medium text-primary">{play.title}</div>
+                              <div className="text-xs text-white">by {play.creator}</div>
+                            </div>
+                          </div>
+                          <div className="w-32 text-center text-sm text-white">
+                            {new Date(play.playedAt).toLocaleDateString(undefined, {
+                              year: 'numeric',
+                              month: 'short',
+                              day: 'numeric'
+                            })}
+                          </div>
+                        </Link>
+                      ))}
+                    </div>
                   </div>
-
-                  <div className="divide-y divide-gray-800">
-                    <Link href="/game/3" className="flex items-center justify-between py-4 hover:bg-gray-800/30">
-                      <div className="flex flex-1 items-center space-x-3">
-                        <div className="relative h-10 w-10 overflow-hidden rounded">
-                          <Image
-                            src="/placeholder.svg?height=40&width=40"
-                            alt="Neon Racer"
-                            fill
-                            className="object-cover"
-                          />
-                        </div>
-                        <div>
-                          <div className="font-medium text-primary">Neon Racer</div>
-                          <div className="text-xs text-gray-400">by SynthWave</div>
-                        </div>
-                      </div>
-                      <div className="w-24 text-center text-sm text-gray-400">Today</div>
-                      <div className="w-24 text-center text-sm text-gray-400">45 min</div>
-                    </Link>
-
-                    <Link href="/game/1" className="flex items-center justify-between py-4 hover:bg-gray-800/30">
-                      <div className="flex flex-1 items-center space-x-3">
-                        <div className="relative h-10 w-10 overflow-hidden rounded">
-                          <Image
-                            src="/placeholder.svg?height=40&width=40"
-                            alt="Pixel Dungeon Crawler"
-                            fill
-                            className="object-cover"
-                          />
-                        </div>
-                        <div>
-                          <div className="font-medium text-primary">Pixel Dungeon Crawler</div>
-                          <div className="text-xs text-gray-400">by PixelWizard</div>
-                        </div>
-                      </div>
-                      <div className="w-24 text-center text-sm text-gray-400">Yesterday</div>
-                      <div className="w-24 text-center text-sm text-gray-400">1h 20min</div>
-                    </Link>
-
-                    <Link href="/game/4" className="flex items-center justify-between py-4 hover:bg-gray-800/30">
-                      <div className="flex flex-1 items-center space-x-3">
-                        <div className="relative h-10 w-10 overflow-hidden rounded">
-                          <Image
-                            src="/placeholder.svg?height=40&width=40"
-                            alt="Zombie Survival"
-                            fill
-                            className="object-cover"
-                          />
-                        </div>
-                        <div>
-                          <div className="font-medium text-primary">Zombie Survival</div>
-                          <div className="text-xs text-gray-400">by SurvivalGuru</div>
-                        </div>
-                      </div>
-                      <div className="w-24 text-center text-sm text-gray-400">3 days ago</div>
-                      <div className="w-24 text-center text-sm text-gray-400">30min</div>
+                ) : (
+                  <div className="flex h-64 flex-col items-center justify-center rounded-lg p-8 text-center">
+                    <h3 className="pixel-text mb-2 text-xl">No play history yet</h3>
+                    <p className="mb-4 text-gray-400">
+                      {isOwnProfile
+                        ? "Start playing games to see your history!"
+                        : "This user hasn't played any games yet."}
+                    </p>
+                    <Link href="/explore">
+                      <Button className="pixel-button">Explore Games</Button>
                     </Link>
                   </div>
-                </div>
+                )}
               </div>
             </TabsContent>
           </Tabs>

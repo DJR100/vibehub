@@ -297,26 +297,94 @@ export default function GamePage() {
     }
 
     try {
+      // Set play start time in localStorage
+      const startTime = Date.now();
+      const playSessionKey = `game_play_${id}_${user.id}`;
+      localStorage.setItem(playSessionKey, startTime.toString());
+      
       // Track the play first
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from('play_history')
         .insert({
           game_id: id,
-          user_id: user.id
-        });
+          user_id: user.id,
+          duration_seconds: 0 // Initial duration, will be updated when game closes
+        })
+        .select()
+        .single();
 
       if (error) {
         console.error('Error tracking game play:', error);
       }
       
+      // Save the play_history record ID for later update
+      if (data) {
+        localStorage.setItem(`${playSessionKey}_record_id`, data.id);
+      }
+      
       // Open game in new tab
-      window.open(game.iframe_url, '_blank');
+      const gameWindow = window.open(game.iframe_url, '_blank');
+      
+      // Set up an event to detect when user returns to this page
+      window.addEventListener('focus', function onFocus() {
+        updatePlayDuration(playSessionKey);
+        window.removeEventListener('focus', onFocus);
+      });
+      
     } catch (error) {
       console.error('Error tracking game play:', error);
       // Still open the game even if tracking fails
       window.open(game.iframe_url, '_blank');
     }
   };
+
+  // Function to update play duration when user returns from game
+  const updatePlayDuration = async (playSessionKey) => {
+    try {
+      const startTimeStr = localStorage.getItem(playSessionKey);
+      const recordId = localStorage.getItem(`${playSessionKey}_record_id`);
+      
+      if (!startTimeStr || !recordId) {
+        console.error('Missing play session data');
+        return;
+      }
+      
+      const startTime = parseInt(startTimeStr);
+      const endTime = Date.now();
+      const durationSeconds = Math.floor((endTime - startTime) / 1000);
+      
+      // Only update if the duration is reasonable (more than 5 seconds, less than 6 hours)
+      if (durationSeconds > 5 && durationSeconds < 21600) {
+        const { error } = await supabase
+          .from('play_history')
+          .update({ duration_seconds: durationSeconds })
+          .eq('id', recordId);
+          
+        if (error) {
+          console.error('Error updating play duration:', error);
+        } else {
+          console.log(`Updated play duration: ${durationSeconds} seconds`);
+        }
+      }
+      
+      // Clean up localStorage
+      localStorage.removeItem(playSessionKey);
+      localStorage.removeItem(`${playSessionKey}_record_id`);
+      
+    } catch (error) {
+      console.error('Error updating play duration:', error);
+    }
+  };
+  
+  // Check for any unfinished play sessions when the page loads
+  useEffect(() => {
+    if (user && id) {
+      const playSessionKey = `game_play_${id}_${user.id}`;
+      if (localStorage.getItem(playSessionKey)) {
+        updatePlayDuration(playSessionKey);
+      }
+    }
+  }, [user, id]);
 
   if (loading) {
     return (
