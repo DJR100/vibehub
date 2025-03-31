@@ -8,6 +8,7 @@ import TrendingGames from "@/components/trending-games"
 import SnakeAnimation from './components/SnakeAnimation'
 import { useSupabase } from "@/lib/supabase-provider"
 import { useState, useEffect } from "react"
+import { getSpoofedStats } from "@/lib/utils"
 
 interface Game {
   id: string;
@@ -96,57 +97,60 @@ export default function Home() {
             <div className="text-center py-12">Loading featured games...</div>
           ) : featuredGames.length > 0 ? (
             <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-              {featuredGames.map((game) => (
-                <Link key={game.id} href={`/game/${game.id}`} className="game-card">
-                  <Image
-                    src={game.image || "/placeholder.svg"}
-                    alt={game.title}
-                    fill
-                    className="object-cover transition-transform duration-300 hover:scale-105"
-                  />
-                  <div className="game-card-content">
-                    <div className="flex flex-wrap gap-2">
-                      {game.tags && game.tags.slice(0, 2).map((tag) => (
-                        <span key={tag} className="tag">
-                          {tag}
-                        </span>
-                      ))}
-                      {game.tags && game.tags.length > 2 && <span className="tag">+{game.tags.length - 2}</span>}
-                    </div>
-                    <div>
-                      <h3 className="pixel-text mb-2 text-lg font-bold text-white">{game.title}</h3>
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center space-x-1 text-xs text-white">
-                          {game.creator_x_url ? (
-                            <div className="flex items-center space-x-1">
-                              <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="currentColor" className="h-3 w-3 text-primary">
-                                <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
-                              </svg>
-                              <span>{extractXHandle(game.creator_x_url)}</span>
+              {featuredGames.map((game: Game) => {
+                const stats = getSpoofedStats(game.id);
+                return (
+                  <Link key={game.id} href={`/game/${game.id}`} className="game-card">
+                    <Image
+                      src={game.image || "/placeholder.svg"}
+                      alt={game.title}
+                      fill
+                      className="object-cover transition-transform duration-300 hover:scale-105"
+                    />
+                    <div className="game-card-content">
+                      <div className="flex flex-wrap gap-2">
+                        {game.tags && game.tags.slice(0, 2).map((tag: string) => (
+                          <span key={tag} className="tag">
+                            {tag}
+                          </span>
+                        ))}
+                        {game.tags && game.tags.length > 2 && <span className="tag">+{game.tags.length - 2}</span>}
+                      </div>
+                      <div>
+                        <h3 className="pixel-text mb-2 text-lg font-bold text-white">{game.title}</h3>
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center space-x-1 text-xs text-white">
+                            {game.creator_x_url ? (
+                              <div className="flex items-center space-x-1">
+                                <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="currentColor" className="h-3 w-3 text-primary">
+                                  <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/>
+                                </svg>
+                                <span>{extractXHandle(game.creator_x_url)}</span>
+                              </div>
+                            ) : (
+                              <div className="text-xs text-white">by {game.creator}</div>
+                            )}
+                          </div>
+                          <div className="flex space-x-3">
+                            <div className="stats-item">
+                              <ThumbsUp className="h-3 w-3 text-primary" />
+                              <span>{stats.likes.toLocaleString()}</span>
                             </div>
-                          ) : (
-                            <div className="text-xs text-white">by {game.creator}</div>
-                          )}
-                        </div>
-                        <div className="flex space-x-3">
-                          <div className="stats-item">
-                            <ThumbsUp className="h-3 w-3 text-primary" />
-                            <span>{(game.likes || 0).toLocaleString()}</span>
-                          </div>
-                          <div className="stats-item">
-                            <Eye className="h-3 w-3 text-primary" />
-                            <span>{(game.play_count || 0).toLocaleString()}</span>
-                          </div>
-                          <div className="stats-item">
-                            <Bookmark className="h-3 w-3 text-primary" />
-                            <span>{(game.favorites_count || 0).toLocaleString()}</span>
+                            <div className="stats-item">
+                              <Eye className="h-3 w-3 text-primary" />
+                              <span>{stats.plays.toLocaleString()}</span>
+                            </div>
+                            <div className="stats-item">
+                              <Bookmark className="h-3 w-3 text-primary" />
+                              <span>{stats.saves.toLocaleString()}</span>
+                            </div>
                           </div>
                         </div>
                       </div>
                     </div>
-                  </div>
-                </Link>
-              ))}
+                  </Link>
+                );
+              })}
             </div>
           ) : (
             <div className="text-center py-12">

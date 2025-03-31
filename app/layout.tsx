@@ -24,6 +24,19 @@ export const metadata: Metadata = {
   generator: 'v0.dev'
 }
 
+// Function to generate random game stats with plays always being highest
+const generateSpoofedStats = () => {
+  // Generate random numbers
+  const likes = Math.floor(Math.random() * 259) + 1; // Random between 1-259
+  const saves = Math.floor(Math.random() * 259) + 1; // Random between 1-259
+  
+  // Make plays higher than both likes and saves
+  const maxOfOthers = Math.max(likes, saves);
+  const plays = maxOfOthers + Math.floor(Math.random() * (259 - maxOfOthers)) + 1;
+  
+  return { likes, saves, plays };
+};
+
 export default function RootLayout({
   children,
 }: {
